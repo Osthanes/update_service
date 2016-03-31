@@ -16,7 +16,7 @@
 #********************************************************************************
 
 #set $DEBUG to 1 for set -x output
-if [ $DEBUG -eq 1 ]; then
+if [[ -n ${DEBUG} ]]; then
   set -x # trace steps
 fi
 
