@@ -215,7 +215,7 @@ if [[ -n "${original_grp}" ]]; then
     echo ${TC_API_RES} | grep "invalid"
     if [ $? -eq 0 ]; then
       #error, invalid API token
-      echo "${red)ERROR: Invalid toolchain token.${no_color}"
+      echo "${red}ERROR: Invalid toolchain token.${no_color}"
       [[ -z ${SKIP_ERROR} ]] && exit 42
       # Invalid toolchain token is not a reason to fail
     else
