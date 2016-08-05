@@ -230,6 +230,11 @@ if [[ -n "${original_grp}" ]]; then
 
       echo "curl -s -X PUT --data \"{\\\"organization_guid\\\": \\\"$CF_ORGANIZATION_ID\\\", \\\"ui_url\\\": \\\"$update_url\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/v1/service_instances/$SERVICE_ID\""
       http_status=$(curl -s -w "%{http_code}" -X PUT --data "{\"organization_guid\": \"$CF_ORGANIZATION_ID\", \"ui_url\": \"$update_url\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/v1/service_instances/$SERVICE_ID" > curlRes.json)
+
+      echo "+++ curlRes +++"
+      cat curlRes.json
+      echo "--- curlRes ---"
+
       if (( $? )); then
         echo -e "${red}ERROR: Failed to record the first update${no_color}"
         # Inability to record an update is not a reason to fail
@@ -240,11 +245,6 @@ if [[ -n "${original_grp}" ]]; then
           echo -e "${red}ERROR: Received http status: $http_status${no_color}"
           [[ -z ${SKIP_ERROR} ]] && exit 42
       fi
-
-      echo "+++ curlRes +++"
-      cat curlRes.json
-      echo "--- curlRes ---"
-
       echo "curl -s -X PUT --data \"{\\\"update_id\\\": \\\"$PY_UPDATE_ID\\\", \\\"stage_name\\\": \\\"$IDS_STAGE_NAME\\\", \\\"space_id\\\": \\\"$CF_SPACE_ID\\\", \\\"ui_url\\\": \\\"$update_url\\\", \\\"pipeline_id\\\": \\\"$PIPELINE_ID\", \\\"pipeline_name\\\": \\\"$PIPELINE_NAME\\\", \\\"stage_id\\\": \\\"$PIPELINE_STAGE_ID\\\", \\\"job_id\\\": \\\"$IDS_JOB_ID\\\", \\\"ad_status\\\": \\\"\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/register_deploy/$SERVICE_ID\""
       http_status=$(curl -w "%{http_code}" -s -X PUT --data "{\"update_id\": \"$PY_UPDATE_ID\", \"stage_name\": \"$IDS_STAGE_NAME\", \"space_id\": \"$CF_SPACE_ID\", \"ui_url\": \"$update_url\", \"pipeline_id\": \"$PIPELINE_ID\", \"pipeline_name\": \"$PIPELINE_NAME\", \"stage_id\": \"$PIPELINE_STAGE_ID\", \"job_id\": \"$IDS_JOB_ID\", \"ad_status\": \"\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID")
       if (( $? )); then
