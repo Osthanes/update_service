@@ -344,12 +344,15 @@ function wait_phase_completion() {
           http_status=$(curl -s -w "%{http_code}" -X PATCH --data "{\"update_id\": \"${__update_id}\", \"ad_status\": \"completed\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID")
 
           if (( $? )); then
-            echo -e "${yellow}WARNING: Failed to update broker${no_color}"
+            echo -e "${red}ERROR: Failed to update broker${no_color}"
             # Inability to record an update is not a reason to fail
+            [[ -z ${SKIP_ERROR} ]] && exit 42
+
           fi
           [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
           if [[ "$http_status" != "200" ]]; then
-              echo -e "${yellow}WARNING: Received http status: $http_status${no_color}"
+              echo -e "${red}ERROR: Received http status: $http_status${no_color}"
+             [[ -z ${SKIP_ERROR} ]] && exit 42
           fi
         fi
         >&2 echo "Phase ${update_phase} is complete"
