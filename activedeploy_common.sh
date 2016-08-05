@@ -173,9 +173,9 @@ function advance() {
 
   active_deploy advance ${__update_id} && rc=$? || rc=$?
   if [[ $rc -eq 0 ]]; then
-  	wait_phase_completion ${__update_id} && rc=$? || rc=$?	
+  	wait_phase_completion ${__update_id} && rc=$? || rc=$?
   fi
-    
+
   >&2 echo "Return code for advance is ${rc}"
   return ${rc}
 }
@@ -183,14 +183,14 @@ function advance() {
 
 function rollback() {
   __update_id="${1}"
-  
+
   >&2 echo "Rolling back update ${__update_id}"
   with_retry active_deploy show ${__update_id}
 
   active_deploy rollback ${__update_id} && rc=$? || rc=$?
   if [[ $rc -eq 0 ]]; then
-  	wait_phase_completion ${__update_id} && rc=$? || rc=$?  
-  
+  	wait_phase_completion ${__update_id} && rc=$? || rc=$?
+
 	# stop rolled back app
 	properties=($(with_retry active_deploy show ${__update_id} | grep "successor group: "))
 	str1=${properties[@]}
@@ -201,8 +201,8 @@ function rollback() {
 	#app_name=$(get_property 'successor group' ${properties[@]} | sed -e '#s/ app.*$##')
 	out=$(stopGroup ${app_name})
 	>&2 echo "${app_name} stopped after rollback"
-  
-  fi  
+
+  fi
   >&2 echo "Return code for rollback is ${rc}"
   return ${rc}
 }
@@ -210,10 +210,10 @@ function rollback() {
 
 function delete() {
   __update_id="${1}"
-  
+
   # Keep records for now
   >&2 echo "Not deleting update ${__update_id}"
-  
+
   # echo "Deleting update ${__update_id}"
   # with_retry active_deploy show ${__update_id}
   # active_deploy delete ${__update_id} --force
@@ -258,15 +258,15 @@ function wait_phase_completion() {
   local __expected_duration=0
 
   if [[ -z ${__update_id} ]]; then
-    >&2 echo "ERROR: Expected update identifier to be passed into wait_phase_completion" 
+    >&2 echo "ERROR: Expected update identifier to be passed into wait_phase_completion"
     return 1
   fi
 
   local start_time=$(date +%s)
-  
+
   >&2 echo "Update ${__update_id} called wait at ${start_time}"
-  
-  local end_time=$(expr ${start_time} + ${__max_wait}) # initial end_time; will be udpated below	
+
+  local end_time=$(expr ${start_time} + ${__max_wait}) # initial end_time; will be udpated below
   while (( $(date +%s) < ${end_time} )); do
     IFS=$'\n' properties=($(with_retry active_deploy show ${__update_id} | grep ':'))
 
@@ -276,7 +276,18 @@ function wait_phase_completion() {
     #check environment for V2, skip if V1
     if (( ${TOOLCHAIN_AVAILABLE} )); then
       #send update to broker
-      curl -s -X PATCH --data "{\"update_id\": \"${__update_id}\", \"ad_status\": \"$update_status\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID"
+      echo "curl -s -X PATCH --data \"{\\\"update_id\\\": \\\"${__update_id}\\\", \\\"ad_status\\\": \\\"$update_status\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/register_deploy/$SERVICE_ID\""
+      http_status=$(curl -s -w "%{http_code}" -X PATCH --data "{\"update_id\": \"${__update_id}\", \"ad_status\": \"$update_status\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID")
+      if (( $? )); then
+        echo -e "${red}ERROR: Failed to record the first update${no_color}"
+      # Inability to record an update is not a reason to fail
+        [[ -z ${SKIP_ERROR} ]] && exit 42
+      fi
+      [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
+      if [[ "$http_status" != "200" ]]; then
+          echo -e "${red}ERROR: Received http status: $http_status${no_color}"
+          [[ -z ${SKIP_ERROR} ]] && exit 42
+      fi
     fi
 
     case "${update_status}" in
@@ -329,7 +340,17 @@ function wait_phase_completion() {
         # The phase is completed
         if (( ${TOOLCHAIN_AVAILABLE} )); then
           #send update to broker
-          curl -s -X PATCH --data "{\"update_id\": \"${__update_id}\", \"ad_status\": \"completed\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID"
+          echo "curl -s -X PATCH --data \"{\\\"update_id\": \\\"${__update_id}\\\", \\\"ad_status\\\": \\\"completed\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/register_deploy/$SERVICE_ID\""
+          http_status=$(curl -s -w "%{http_code}" -X PATCH --data "{\"update_id\": \"${__update_id}\", \"ad_status\": \"completed\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID")
+
+          if (( $? )); then
+            echo -e "${yellow}WARNING: Failed to update broker${no_color}"
+            # Inability to record an update is not a reason to fail
+          fi
+          [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
+          if [[ "$http_status" != "200" ]]; then
+              echo -e "${yellow}WARNING: Received http status: $http_status${no_color}"
+          fi
         fi
         >&2 echo "Phase ${update_phase} is complete"
         return 0
@@ -348,7 +369,7 @@ function wait_phase_completion() {
 
     sleep 3
   done
-  
+
   return 9 # took too long
 }
 
@@ -385,7 +406,7 @@ function wait_comment() {
 
 
 # Clean up (delete) old versions of the application/container groups.
-# Keeps the currently routed group (ie, current version), the latest deployment (if it failed) and 
+# Keeps the currently routed group (ie, current version), the latest deployment (if it failed) and
 # up to CONCURRENT_VERSIONS-1 other active groups (other stopped groups are removed)
 # Usage: clean
 #   Required environment variable NAME - the name of the current deployed group
@@ -509,3 +530,4 @@ except Exception, e:
 CODE
 }
 
+echo "activedeploy_common.sh included"

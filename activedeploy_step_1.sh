@@ -22,7 +22,7 @@ fi
 
 SCRIPTDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
-AD_STEP_1=true 
+AD_STEP_1=true
 source ${SCRIPTDIR}/check_and_set_env.sh
 
 echo "TARGET_PLATFORM = $TARGET_PLATFORM"
@@ -30,10 +30,10 @@ echo "NAME = $NAME"
 echo "AD_ENDPOINT = $AD_ENDPOINT"
 echo "CONCURRENT_VERSIONS = $CONCURRENT_VERSIONS"
 echo "PORT = $PORT"
-echo "GROUP_SIZE = $GROUP_SIZE" 
-echo "RAMPUP_DURATION = $RAMPUP_DURATION" 
-echo "RAMPDOWN_DURATION = $RAMPDOWN_DURATION" 
-echo "ROUTE_HOSTNAME = $ROUTE_HOSTNAME" 
+echo "GROUP_SIZE = $GROUP_SIZE"
+echo "RAMPUP_DURATION = $RAMPUP_DURATION"
+echo "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
+echo "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
 echo "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 echo "TOOLCHAIN_AVAILABLE = $TOOLCHAIN_AVAILABLE"
 
@@ -91,11 +91,18 @@ function rollback_and_cleanup() {
   rollback ${__update}
   cleanup
 }
+
+echo "----------------------------------- env start --------------------------------"
+env
+echo "----------------------------------- env end --------------------------------"
+
 # cd to target so can read ccs.py when needed (for route detection)
 cd ${SCRIPTDIR}
 
 originals=($(groupList))
 #originals=($(cf apps | cut -d' ' -f1))
+
+echo "Originals: ${originals[@]}"
 
 successor="${NAME}"
 
@@ -103,7 +110,7 @@ successor="${NAME}"
 export UPDATE_ID=${BUILD_NUMBER}
 
 # Determine which original groups has the desired route --> the current original
-route="${ROUTE_HOSTNAME}.${ROUTE_DOMAIN}" 
+route="${ROUTE_HOSTNAME}.${ROUTE_DOMAIN}"
 ROUTED=($(getRouted "${route}" "${originals[@]}"))
 echo ${#ROUTED[@]} of original groups routed to ${route}: ${ROUTED[@]}
 
@@ -158,13 +165,13 @@ echo "INFO: Successor group is ${successor_grp}  (${UPDATE_ID})"
 # Do update if there is an original group
 if [[ -n "${original_grp}" ]]; then
   echo "Beginning update with cf active-deploy-create ..."
- 
+
   create_args="${original_grp} ${successor_grp} --manual --quiet --timeout 60s"
-  
+
   if [[ -n "${RAMPUP_DURATION}" ]]; then create_args="${create_args} --rampup ${RAMPUP_DURATION}"; fi
   if [[ -n "${RAMPDOWN_DURATION}" ]]; then create_args="${create_args} --rampdown ${RAMPDOWN_DURATION}"; fi
   create_args="${create_args} --test 1s";
-  
+
   active=$(find_active_update ${original_grp})
   if [[ -n ${active} ]]; then
     echo "Original group ${original_grp} already engaged in an active update; rolling it back"
@@ -199,37 +206,80 @@ if [[ -n "${original_grp}" ]]; then
   # Identify toolchain if available and send update details to it
   export PY_UPDATE_ID=$update
   if (( ${TOOLCHAIN_AVAILABLE} )); then
-    echo "PIPELINE_TOOLCHAIN_ID=${PIPELINE_TOOLCHAIN_ID}"
+    echo "curl -s -k -H \"Authorization: ${TOOLCHAIN_TOKEN}\" https://otc-api.stage1.ng.bluemix.net/api/v1/toolchains/${PIPELINE_TOOLCHAIN_ID}?include=everything"
     export TC_API_RES="$(curl -s -k -H "Authorization: ${TOOLCHAIN_TOKEN}" https://otc-api.stage1.ng.bluemix.net/api/v1/toolchains/${PIPELINE_TOOLCHAIN_ID}\?include\=everything)"
-   #echo "***** TC_API_RES:"
-   #echo ${TC_API_RES}
+    echo "+++ TC_API_RES +++:"
+    echo ${TC_API_RES}
+    echo "--- TC_API_RES ---"
 
     echo ${TC_API_RES} | grep "invalid"
     if [ $? -eq 0 ]; then
       #error, invalid API token
-      echo "WARNING: Invalid toolchain token."
+      echo "${red)ERROR: Invalid toolchain token.${no_color}"
+      [[ -z ${SKIP_ERROR} ]] && exit 42
       # Invalid toolchain token is not a reason to fail
     else
       #proceed normally
       export SERVICE_ID="$(python processJSON.py sid)"
       export AD_API_URL="$(python processJSON.py ad-url)"
       export PIPELINE_NAME="$(python processJSON.py $PIPELINE_ID)"
-      
-      # echo "SERVICE_ID=${SERVICE_ID}"
-      # echo "AD_API_URL=${AD_API_URL}"
-      # echo "PIPELINE_NAME=${PIPELINE_NAME}"
 
-      curl -s -X PUT --data "{\"organization_guid\": \"$CF_ORGANIZATION_ID\", \"ui_url\": \"$update_url\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/v1/service_instances/$SERVICE_ID" > curlRes.json
-      curl -s -X PUT --data "{\"update_id\": \"$PY_UPDATE_ID\", \"stage_name\": \"$IDS_STAGE_NAME\", \"space_id\": \"$CF_SPACE_ID\", \"ui_url\": \"$update_url\", \"pipeline_id\": \"$PIPELINE_ID\", \"pipeline_name\": \"$PIPELINE_NAME\", \"stage_id\": \"$PIPELINE_STAGE_ID\", \"job_id\": \"$IDS_JOB_ID\", \"ad_status\": \"\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID"
+      echo "SERVICE_ID=${SERVICE_ID}"
+      echo "AD_API_URL=${AD_API_URL}"
+      echo "PIPELINE_NAME=${PIPELINE_NAME}"
+
+      echo "curl -s -X PUT --data \"{\\\"organization_guid\\\": \\\"$CF_ORGANIZATION_ID\\\", \\\"ui_url\\\": \\\"$update_url\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/v1/service_instances/$SERVICE_ID\""
+      http_status=$(curl -s -w "%{http_code}" -X PUT --data "{\"organization_guid\": \"$CF_ORGANIZATION_ID\", \"ui_url\": \"$update_url\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/v1/service_instances/$SERVICE_ID" > curlRes.json)
       if (( $? )); then
-        echo "WARNING: Failed to record the update"
+        echo -e "${red}ERROR: Failed to record the first update${no_color}"
+        # Inability to record an update is not a reason to fail
+        [[ -z ${SKIP_ERROR} ]] && exit 42
+      fi
+      [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
+      if [[ "$http_status" != "200" ]]; then
+          echo -e "${red}ERROR: Received http status: $http_status${no_color}"
+          [[ -z ${SKIP_ERROR} ]] && exit 42
+      fi
+
+      echo "+++ curlRes +++"
+      cat curlRes.json
+      echo "--- curlRes ---"
+
+      echo "curl -s -X PUT --data \"{\\\"update_id\\\": \\\"$PY_UPDATE_ID\\\", \\\"stage_name\\\": \\\"$IDS_STAGE_NAME\\\", \\\"space_id\\\": \\\"$CF_SPACE_ID\\\", \\\"ui_url\\\": \\\"$update_url\\\", \\\"pipeline_id\\\": \\\"$PIPELINE_ID\", \\\"pipeline_name\\\": \\\"$PIPELINE_NAME\\\", \\\"stage_id\\\": \\\"$PIPELINE_STAGE_ID\\\", \\\"job_id\\\": \\\"$IDS_JOB_ID\\\", \\\"ad_status\\\": \\\"\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/register_deploy/$SERVICE_ID\""
+      http_status=$(curl -w "%{http_code}" -s -X PUT --data "{\"update_id\": \"$PY_UPDATE_ID\", \"stage_name\": \"$IDS_STAGE_NAME\", \"space_id\": \"$CF_SPACE_ID\", \"ui_url\": \"$update_url\", \"pipeline_id\": \"$PIPELINE_ID\", \"pipeline_name\": \"$PIPELINE_NAME\", \"stage_id\": \"$PIPELINE_STAGE_ID\", \"job_id\": \"$IDS_JOB_ID\", \"ad_status\": \"\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID")
+      if (( $? )); then
+        echo -e "${red}ERROR: Failed to record the second update${no_color}"
+        [[ -z ${SKIP_ERROR} ]] && exit 42
         # Inability to record an update is not a reason to fail
       fi
+      [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
+      if [[ "$http_status" != "200" ]]; then
+          echo -e "${red}ERROR: Received http status: $http_status${no_color}"
+          [[ -z ${SKIP_ERROR} ]] && exit 42
+      fi
     fi
+
+    echo "organization_guid: $CF_ORGANIZATION_ID"
+    echo "ui_url: $update_url"
+    echo "URL: $AD_API_URL/v1/service_instances/$SERVICE_ID"
+    echo
+    echo "update_id:$PY_UPDATE_ID"
+    echo "stage_name: $IDS_STAGE_NAME"
+    echo "space_id: $CF_SPACE_ID"
+    echo "pipeline_id: $PIPELINE_ID"
+    echo "pipeline_name: $PIPELINE_NAME"
+    echo "stage_id: $PIPELINE_STAGE_ID"
+    echo "job_id: $IDS_JOB_ID"
+    echo "ad_status: "
+    echo "$AD_API_URL/register_deploy/$SERVICE_ID"
+    echo
+
+    echo "PIPELINE_TOOLCHAIN_ID=${PIPELINE_TOOLCHAIN_ID}"
+
   else
     echo "INFO: Running in V1 environment, no broker available."
   fi
-  
+
   # Wait for completion of rampup phase
   wait_phase_completion $update && rc=$? || rc=$?
   echo "wait result is $rc"
@@ -277,18 +327,18 @@ if [[ -n "${original_grp}" ]]; then
     ;;
 
     1) # completed
-    # cannot rollback; delete; return OK 
+    # cannot rollback; delete; return OK
     echo "Cannot rollback, phase completed. Deleting update record"
     delete_udpate $update
     ;;
 
     2) # rolled back
     # delete; return ERROR
-    
+
     # stop rolled back app
     out=$(stopGroup ${successor_grp})
     echo "${successor_grp} stopped after rollback"
-    
+
     cleanup ${update}
 
     rollback_reason=$(get_detailed_message $ad_server_url $update)
@@ -300,7 +350,7 @@ if [[ -n "${original_grp}" ]]; then
     3) # failed
     # FAIL; don't delete; return ERROR -- manual intervension may be needed
     exit_with_link 3 "Phase failed, manual intervension may be needed"
-    ;; 
+    ;;
 
     4) # paused; resume failed
     # FAIL; don't delete; return ERROR -- manual intervension may be needed
@@ -323,7 +373,7 @@ if [[ -n "${original_grp}" ]]; then
     exit_with_link 1 "ERROR: Unknown problem occurred"
     ;;
   esac
-  
+
   # Normal exist; show current update
   with_retry active_deploy show $update
   exit_with_link 0 "${successor_grp} successfully advanced to test phase"

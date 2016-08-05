@@ -24,6 +24,7 @@ export LANG=en_US  # Hard-coded because there is a defect w/ en_US.UTF-8
 # Colors
 export green='\e[0;32m'
 export red='\e[0;31m'
+export yellow='\e[0;33m'
 export label_color='\e[0;33m'
 export no_color='\e[0m' # No Color
 
@@ -65,7 +66,7 @@ if [[ -n "${AD_ENDPOINT}" ]]; then
     echo -e "${red}ERROR: Unable to validate availability of Active Deploy service ${AD_ENDPOINT}; failing active deploy${no_color}"
     export MUSTFAIL_ACTIVEDEPLOY=true
   else
-    supports_target ${AD_ENDPOINT} ${CF_TARGET_URL} 
+    supports_target ${AD_ENDPOINT} ${CF_TARGET_URL}
     if (( $? )); then
       echo -e "${red}ERROR: Selected Active Deploy service (${AD_ENDPOINT}) does not support target environment (${CF_TARGET_URL}); failing active deploy${no_color}"
       export MUSTFAIL_ACTIVEDEPLOY=true
@@ -76,12 +77,22 @@ fi
 # Set default (1) for CONCURRENT_VERSIONS
 if [[ -z ${CONCURRENT_VERSIONS} ]]; then export CONCURRENT_VERSIONS=2; fi
 
-# Check if the pipeline is in the context of a toolchain by querying the toolchain broker. 
+# Check if the pipeline is in the context of a toolchain by querying the toolchain broker.
 # If so, set TOOLCHAIN_AVAILABLE to 1; otherwise to 0
+echo "echo curl -s --head -H \"Authorization: ${TOOLCHAIN_TOKEN}\" https://otc-api.stage1.ng.bluemix.net/api/v1/toolchains/${PIPELINE_TOOLCHAIN_ID}\?include\=everything | head -n 1 | grep \"HTTP/1.[01] [23]..\""
 curl -s --head -H "Authorization: ${TOOLCHAIN_TOKEN}" https://otc-api.stage1.ng.bluemix.net/api/v1/toolchains/${PIPELINE_TOOLCHAIN_ID}\?include\=everything | head -n 1 | grep "HTTP/1.[01] [23].." > /dev/null
-if (( $? )); then TOOLCHAIN_AVAILABLE=0; else TOOLCHAIN_AVAILABLE=1; fi
-export TOOLCHAIN_AVAILABLE
+if (( $? )); then
+   echo "--- Found toolchain broker"
+fi
 
+TOOLCHAIN_AVAILABLE=0
+if [[ -n $TOOLCHAIN_TOKEN ]]; then
+    TOOLCHAIN_AVAILABLE=1
+    echo "--- Running in TOOLCHAIN V2"
+else
+    echo "--- Running in TOOLCHAIN V1"
+fi
+export TOOLCHAIN_AVAILABLE
 
 ###################
 ################### Needed only for step_1
@@ -174,4 +185,3 @@ ad_server_url=$(active_deploy service-info | grep "service endpoint: " | sed 's/
 update_gui_url=$(curl -s ${ad_server_url}/v1/info/ | grep update_gui_url | awk '{print $2}' | sed 's/"//g' | sed 's/,//')
 
 show_link "Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
-
