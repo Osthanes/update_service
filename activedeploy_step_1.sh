@@ -228,9 +228,9 @@ if [[ -n "${original_grp}" ]]; then
       echo "AD_API_URL=${AD_API_URL}"
       echo "PIPELINE_NAME=${PIPELINE_NAME}"
 
-      if [[ ${SERVICE_ID} == "0" || ${AD_API_URL} == "0" || ${PIPELINE_NAME} == "0" ]]; then
-              echo -e "${red}ERROR: Active deploy instance not found in toolchain${no_color}"
-              exit 42
+      if [[ "${SERVICE_ID}x" == "0x" || "${AD_API_URL}x" == "0x" || "${PIPELINE_NAME}" == "0x" ]]; then
+         echo -e "${red}ERROR: Active deploy instance not found in toolchain${no_color}"
+         exit 42
       fi
 
       echo "curl -s -X PUT --data \"{\\\"organization_guid\\\": \\\"$CF_ORGANIZATION_ID\\\", \\\"ui_url\\\": \\\"$update_url\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/v1/service_instances/$SERVICE_ID\""
