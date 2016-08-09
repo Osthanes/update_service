@@ -250,6 +250,7 @@ if [[ -n "${original_grp}" ]]; then
       [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
       if [[ "$http_status" != "200" ]]; then
           echo -e "${red}ERROR: Received http status: $http_status${no_color}"
+          cat curlRes.json
           [[ -z ${SKIP_ERROR} ]] && exit 42
       fi
       echo "curl -s -X PUT --data \"{\\\"update_id\\\": \\\"$PY_UPDATE_ID\\\", \\\"stage_name\\\": \\\"$IDS_STAGE_NAME\\\", \\\"space_id\\\": \\\"$CF_SPACE_ID\\\", \\\"ui_url\\\": \\\"$update_url\\\", \\\"pipeline_id\\\": \\\"$PIPELINE_ID\", \\\"pipeline_name\\\": \\\"$PIPELINE_NAME\\\", \\\"stage_id\\\": \\\"$PIPELINE_STAGE_ID\\\", \\\"job_id\\\": \\\"$IDS_JOB_ID\\\", \\\"ad_status\\\": \\\"\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/register_deploy/$SERVICE_ID\""
