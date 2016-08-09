@@ -39,6 +39,18 @@ echo "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
 echo "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 echo "TOOLCHAIN_AVAILABLE = $TOOLCHAIN_AVAILABLE"
 
+# check deployment method parameter and set create parms
+
+declare -A DEPLOYMENT_METHOD_ARG
+DEPLOYMENT_METHOD_ARG=( [Red Black]=rb [Resource Optimized]=rorb )
+if [ ${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]+_} ]; then
+  DEPLOYMENT_METHOD_CREATE_ARG="${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]}"
+  echo "Found $DEPLOYMENT_METHOD - DEPLOYMENT_METHOD_CREATE_ARG: $DEPLOYMENT_METHOD_CREATE_ARG"
+else
+  echo -e "${red}ERROR: Invalid deployment method $DEPLOYMENT_METHOD detected${no_color}"
+  exit 1
+fi
+
 function exit_with_link() {
   local __status="${1}"
   local __message="${2}"
@@ -168,7 +180,7 @@ echo "INFO: Successor group is ${successor_grp}  (${UPDATE_ID})"
 if [[ -n "${original_grp}" ]]; then
   echo "Beginning update with cf active-deploy-create ..."
 
-  create_args="${original_grp} ${successor_grp} --manual --quiet --timeout 60s"
+  create_args="${original_grp} ${successor_grp} --manual --quiet --timeout 60s --algorithm DEPLOYMENT_METHOD_CREATE_ARG"
 
   if [[ -n "${RAMPUP_DURATION}" ]]; then create_args="${create_args} --rampup ${RAMPUP_DURATION}"; fi
   if [[ -n "${RAMPDOWN_DURATION}" ]]; then create_args="${create_args} --rampdown ${RAMPDOWN_DURATION}"; fi
