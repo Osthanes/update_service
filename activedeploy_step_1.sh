@@ -34,7 +34,7 @@ echo "GROUP_SIZE = $GROUP_SIZE"
 echo "RAMPUP_DURATION = $RAMPUP_DURATION"
 echo "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
 echo "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
-echo "DEPLOYMENT_METHOD = ""\"$DEPLOYMENT_METHOD\""
+echo "DEPLOYMENT_METHOD = ""$DEPLOYMENT_METHOD"
 echo "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
 echo "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 echo "TOOLCHAIN_AVAILABLE = $TOOLCHAIN_AVAILABLE"
@@ -43,13 +43,13 @@ echo "TOOLCHAIN_AVAILABLE = $TOOLCHAIN_AVAILABLE"
 
 declare -A DEPLOYMENT_METHOD_ARG
 DEPLOYMENT_METHOD_ARG=( [Red Black]=rb [Resource Optimized]=rorb )
-if [ ${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]+_} ]; then
-  DEPLOYMENT_METHOD_CREATE_ARG="${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]}"
-  echo "Found $DEPLOYMENT_METHOD - DEPLOYMENT_METHOD_CREATE_ARG: $DEPLOYMENT_METHOD_CREATE_ARG"
-else
-  echo -e "${red}ERROR: Invalid deployment method $DEPLOYMENT_METHOD detected${no_color}"
-  exit 1
-fi
+#if [ ${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]+_} ]; then
+#  DEPLOYMENT_METHOD_CREATE_ARG="${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]}"
+#  echo "Found $DEPLOYMENT_METHOD - DEPLOYMENT_METHOD_CREATE_ARG: $DEPLOYMENT_METHOD_CREATE_ARG"
+#else
+#  echo -e "${red}ERROR: Invalid deployment method $DEPLOYMENT_METHOD detected${no_color}"
+#  exit 1
+#fi
 
 function exit_with_link() {
   local __status="${1}"
@@ -180,11 +180,13 @@ echo "INFO: Successor group is ${successor_grp}  (${UPDATE_ID})"
 if [[ -n "${original_grp}" ]]; then
   echo "Beginning update with cf active-deploy-create ..."
 
-  create_args="${original_grp} ${successor_grp} --manual --quiet --timeout 60s --algorithm DEPLOYMENT_METHOD_CREATE_ARG"
+  create_args="${original_grp} ${successor_grp} --manual --quiet --timeout 60s"
 
   if [[ -n "${RAMPUP_DURATION}" ]]; then create_args="${create_args} --rampup ${RAMPUP_DURATION}"; fi
   if [[ -n "${RAMPDOWN_DURATION}" ]]; then create_args="${create_args} --rampdown ${RAMPDOWN_DURATION}"; fi
   create_args="${create_args} --test 1s";
+
+  if [[ -n "${DEPLOYMENT_METHOD_CREATE_ARG}" ]]; then create_args="${create_args} --algorithm ${DEPLOYMENT_METHOD_CREATE_ARG}"; fi
 
   active=$(find_active_update ${original_grp})
   if [[ -n ${active} ]]; then
