@@ -487,7 +487,7 @@ function getRouted() {
   done
 
   >&2 logDebug "${__route} is routed to ${__routed_apps[@]}"
-  logDebug "${__routed_apps[@]}"
+  echo "${__routed_apps[@]}"
 }
 
 
