@@ -21,6 +21,23 @@ function debugme() {
   [[ -n ${DEBUG} ]] && "$@" || :
 }
 
+export LOG_LEVEL=${LOG_LEVEL:-2}
+
+function logError() {
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 1 ]] && echo -e "${red}ERROR: $@${no_color}"
+}
+
+function logWarning() {
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 2 ]] && echo -e "${label_color}WARNING: $@${no_color}"
+}
+
+function logInfo() {
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 3 ]] && echo -e "${white}INFO: $@${no_color}"
+}
+
+function logDebug() {
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 4 ]] && echo -e "${cyan}DEBUG: $@${no_color}"
+}
 
 # Default value; should be sert in target platform specific files (CloudFoundry.sh, Container.sh, etc)
 if [[ -z ${MIN_MAX_WAIT} ]]; then MIN_MAX_WAIT=90; fi
@@ -99,15 +116,15 @@ function with_retry() {
   attempt=0
   retry=true
   while [[ -n ${retry} ]] && (( ${attempt} < ${WITH_RETRIES_MAX_RETRIES} )); do
-    if [[ -n ${DEBUG} ]]; then >&2 echo "Attempt ${attempt}"; fi
+    >&2 logDebug "Attempt ${attempt}"
     let attempt=attempt+1
     $* > /tmp/$$ && rc=$? || rc=$?
     if (( ${rc} )); then
       # "BXNAD0315" is "Error contacting the database."
       retry=$(grep -e "BXNAD0315" /tmp/$$)
       if [[ -n ${retry} ]] && (( ${attempt} < ${WITH_RETRIES_MAX_RETRIES} )); then
-        >&2 echo "with_retry() call FAILED: ${retry}"
-        if [[ -n ${DEBUG} ]]; then >&2 echo "Retrying in ${WITH_RETRIES_SLEEP} seconds"; fi
+        >&2 logWarning "with_retry() call FAILED: ${retry}"
+        >&2 logInfo "Retrying in ${WITH_RETRIES_SLEEP} seconds"
         sleep ${WITH_RETRIES_SLEEP}
       fi
     else retry=
@@ -151,14 +168,14 @@ function find_active_update() {
 # Usage: create create_args
 function create() {
   unset IFS
-  >&2 echo "Calling cf active-deploy-create $*"
+  >&2 logInfo "Calling cf active-deploy-create $*"
   active_deploy create $* | tee /tmp/create$$ | grep "^[0-9a-f]\{8\}-\([0-9a-f]\{4\}-\)\{3\}[0-9a-f]\{12\}$"
   create_rc="${PIPESTATUS[0]}" grep_rc="${PIPESTATUS[2]}" status=$?
   if (( ${status} )); then
     if (( $create_rc )); then
-      >&2 echo -e "${red}ERROR: create failed: $(cat /tmp/create$$)${no_color}"
+      >&2 logError "Create failed: $(cat /tmp/create$$)"
     elif (( $grep_rc )); then
-      >&2 echo -e "${red}ERROR: No id returned (or pattern wrong)${no_color}"
+      >&2 logError "No id returned (or pattern wrong)"
     fi
   fi
   rm /tmp/create$$
@@ -168,7 +185,7 @@ function create() {
 
 function advance() {
   __update_id="${1}"
-  >&2 echo "Advancing update ${__update_id}"
+  >&2 logInfo "Advancing update ${__update_id}"
   with_retry active_deploy show ${__update_id}
 
   active_deploy advance ${__update_id} && rc=$? || rc=$?
@@ -176,7 +193,7 @@ function advance() {
   	wait_phase_completion ${__update_id} && rc=$? || rc=$?
   fi
 
-  >&2 echo "Return code for advance is ${rc}"
+  >&2 logInfo "Return code for advance is ${rc}"
   return ${rc}
 }
 
@@ -184,7 +201,7 @@ function advance() {
 function rollback() {
   __update_id="${1}"
 
-  >&2 echo "Rolling back update ${__update_id}"
+  >&2 logInfo "Rolling back update ${__update_id}"
   with_retry active_deploy show ${__update_id}
 
   active_deploy rollback ${__update_id} && rc=$? || rc=$?
@@ -200,10 +217,10 @@ function rollback() {
 	#IFS=$'\n' properties=($(with_retry active_deploy show ${__update_id} | grep ':'))
 	#app_name=$(get_property 'successor group' ${properties[@]} | sed -e '#s/ app.*$##')
 	out=$(stopGroup ${app_name})
-	>&2 echo "${app_name} stopped after rollback"
+	>&2 logInfo "${app_name} stopped after rollback"
 
   fi
-  >&2 echo "Return code for rollback is ${rc}"
+  >&2 logInfo "Return code for rollback is ${rc}"
   return ${rc}
 }
 
@@ -212,7 +229,7 @@ function delete() {
   __update_id="${1}"
 
   # Keep records for now
-  >&2 echo "Not deleting update ${__update_id}"
+  >&2 logInfo "Not deleting update ${__update_id}"
 
   # echo "Deleting update ${__update_id}"
   # with_retry active_deploy show ${__update_id}
@@ -258,13 +275,13 @@ function wait_phase_completion() {
   local __expected_duration=0
 
   if [[ -z ${__update_id} ]]; then
-    >&2 echo "ERROR: Expected update identifier to be passed into wait_phase_completion"
+    >&2 logEror "Expected update identifier to be passed into wait_phase_completion"
     return 1
   fi
 
   local start_time=$(date +%s)
 
-  >&2 echo "Update ${__update_id} called wait at ${start_time}"
+  >&2 logDebug "Update ${__update_id} called wait at ${start_time}"
 
   local end_time=$(expr ${start_time} + ${__max_wait}) # initial end_time; will be udpated below
   while (( $(date +%s) < ${end_time} )); do
@@ -272,23 +289,6 @@ function wait_phase_completion() {
 
     update_phase=$(get_property 'phase' ${properties[@]})
     update_status=$(get_property 'status' ${properties[@]})
-
-    #check environment for V2, skip if V1
-    if (( ${TOOLCHAIN_AVAILABLE} )); then
-      #send update to broker
-      echo "curl -s -X PATCH --data \"{\\\"update_id\\\": \\\"${__update_id}\\\", \\\"ad_status\\\": \\\"$update_status\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/register_deploy/$SERVICE_ID\""
-      http_status=$(curl -s -w "%{http_code}" -X PATCH --data "{\"update_id\": \"${__update_id}\", \"ad_status\": \"$update_status\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID")
-      if (( $? )); then
-        echo -e "${red}ERROR: Failed to record the first update${no_color}"
-      # Inability to record an update is not a reason to fail
-        [[ -z ${SKIP_ERROR} ]] && exit 42
-      fi
-      [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
-      if [[ "$http_status" != "200" ]]; then
-          echo -e "${red}ERROR: Received http status: $http_status${no_color}"
-          [[ -z ${SKIP_ERROR} ]] && exit 42
-      fi
-    fi
 
     case "${update_status}" in
       completed) # whole update is completed
@@ -302,15 +302,15 @@ function wait_phase_completion() {
       ;;
       paused)
       # attempt to resume
-      >&2 echo "Update ${__update_id} is paused; attempting to resume"
+      >&2 logInfo "Update ${__update_id} is paused; attempting to resume"
       active_deploy resume ${__update_id}
       # TODO deal with failures
       ;;
       in_progress|rolling\ back)
       ;;
       *)
-      >&2 echo "ERROR: Unknown status: ${update_status}"
-      >&2 echo "${properties[@]}"
+      >&2 logError "Unknown status: ${update_status}"
+      >&2 logError "${properties[@]}"
       return 5
       ;;
     esac
@@ -328,37 +328,20 @@ function wait_phase_completion() {
       rampup|test|rampdown)
       ;;
       *)
-      >&2 echo "ERROR: Unknown phase: ${update_phase}"
+      >&2 LogError "Unknown phase: ${update_phase}"
       return 5
     esac
 
-    >&2 echo "Update ${__update_id} is ${update_status} in phase ${update_phase}"
+    >&2 logDebug "Update ${__update_id} is ${update_status} in phase ${update_phase}"
 
     if [[ "in_progress" == "${update_status}" ]]; then
       phase_progress=$(get_property "${update_phase} duration" ${properties[@]})
       if [[ "${phase_progress}" =~ completed* ]]; then
         # The phase is completed
-        if (( ${TOOLCHAIN_AVAILABLE} )); then
-          #send update to broker
-          echo "curl -s -X PATCH --data \"{\\\"update_id\": \\\"${__update_id}\\\", \\\"ad_status\\\": \\\"completed\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/register_deploy/$SERVICE_ID\""
-          http_status=$(curl -s -w "%{http_code}" -X PATCH --data "{\"update_id\": \"${__update_id}\", \"ad_status\": \"completed\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID")
-
-          if (( $? )); then
-            echo -e "${red}ERROR: Failed to update broker${no_color}"
-            # Inability to record an update is not a reason to fail
-            [[ -z ${SKIP_ERROR} ]] && exit 42
-
-          fi
-          [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
-          if [[ "$http_status" != "200" ]]; then
-              echo -e "${red}ERROR: Received http status: $http_status${no_color}"
-             [[ -z ${SKIP_ERROR} ]] && exit 42
-          fi
-        fi
-        >&2 echo "Phase ${update_phase} is complete"
+        >&2 logInfo "Phase ${update_phase} is complete"
         return 0
       else
-        >&2 echo "Phase ${update_phase} progress is: ${phase_progress}"
+        >&2 logInfo "Phase ${update_phase} progress is: ${phase_progress}"
       fi
     fi # if [[ "in_progress" == "${update_status}" ]]
     # determine the expected time if haven't done so already; update end_time
@@ -367,7 +350,7 @@ function wait_phase_completion() {
       __max_wait=$(expr ${__expected_duration}*3 | bc)
       if (( ${__max_wait} < ${MIN_MAX_WAIT} )); then __max_wait=${MIN_MAX_WAIT}; fi
       end_time=$(expr ${start_time} + ${__max_wait})
-      >&2 echo "Phase ${update_phase} has an expected duration of ${__expected_duration}s; will wait ${__max_wait}s ending at ${end_time}"
+      >&2 logInfo "Phase ${update_phase} has an expected duration of ${__expected_duration}s; will wait ${__max_wait}s ending at ${end_time}"
     fi
 
     sleep 3
@@ -407,7 +390,6 @@ function wait_comment() {
   esac
 }
 
-
 # Clean up (delete) old versions of the application/container groups.
 # Keeps the currently routed group (ie, current version), the latest deployment (if it failed) and
 # up to CONCURRENT_VERSIONS-1 other active groups (other stopped groups are removed)
@@ -420,7 +402,7 @@ function clean() {
   VERSION=$(echo $NAME | rev | cut -d_ -f1 | rev)
 
   candidates=($(groupList))
-  debugme echo "clean(): Found ${#candidates[@]} versions: ${candidates[@]}"
+  logDebug "clean(): Found ${#candidates[@]} versions: ${candidates[@]}"
 
   VERSIONS=()
   for c in "${candidates[@]}"; do
@@ -429,7 +411,7 @@ function clean() {
   done
 
   SORTED_VERSIONS=($(for i in ${VERSIONS[@]}; do echo $i; done | sort -n))
-  debugme echo "clean(): Found sorted ${#SORTED_VERSIONS[@]} versions: ${SORTED_VERSIONS[@]}"
+  logDebug  "clean(): Found sorted ${#SORTED_VERSIONS[@]} versions: ${SORTED_VERSIONS[@]}"
 
   # Iterate in reverse (most recent to oldest)
   CURRENT_VERSION=
@@ -437,20 +419,20 @@ function clean() {
   KEPT=()
   for (( idx=${#SORTED_VERSIONS[@]}-1; idx>=0; idx-- )); do
     candidate="${PATTERN}_${SORTED_VERSIONS[$idx]}"
-    debugme echo "clean(): Considering candidate ${candidate}"
+    logDebug  "clean(): Considering candidate ${candidate}"
 
     # Keep most recent with a route
     if [[ -z ${CURRENT_VERSION} ]] && [[ -n $(getRoutes "${candidate}") ]]; then
       # The current version is the first version with a route that we find (recall: reverse order)
       CURRENT_VERSION="${candidate}"
       KEPT+=(${candidate})
-      echo "clean(): Identified current version: ${CURRENT_VERSION}; keeping"
+      logInfo "clean(): Identified current version: ${CURRENT_VERSION}; keeping"
 
     # Delete groups with versions greater than the version of the group just deployed (VERSION)
     # This represents a group deployed using a previous (or another!) pipeline.
     # Eventually, the existence of the group will become an issue (name conflict) so delete it now.
     elif (( ${SORTED_VERSIONS[$idx]} > ${VERSION} )); then
-      echo "clean(): Deleting group ${candidate} from previous pipeline"
+      logInfo "clean(): Deleting group ${candidate} from previous pipeline"
       groupDelete "${candidate}"
 
     # Keep the most recent without a route IF the current version has has not been found
@@ -458,27 +440,27 @@ function clean() {
     elif [[ -z ${CURRENT_VERSION} ]] &&  [[ -z ${MOST_RECENT} ]]; then
       MOST_RECENT="${candidate}"
       # Don't record this in the list of those that were KEPT; it is extra
-      echo "clean(): Current deployment (${MOST_RECENT}) failed; keeping for debug purposes"
+      logInfo "clean(): Current deployment (${MOST_RECENT}) failed; keeping for debug purposes"
 
     # Delete any (older) stopped groups -- they were failed deploys
     elif [[ "true" == "$(isStopped ${candidate})" ]]; then
-      echo "clean(): Deleting group ${candidate} (group is in stopped state)"
+      logInfo "clean(): Deleting group ${candidate} (group is in stopped state)"
       groupDelete "${candidate}"
 
     # If we've kept enough, delete the group
     elif (( ${#KEPT[@]} >= ${CONCURRENT_VERSIONS} )); then
-      echo "clean(): Deleting group ${candidate} (already identified sufficient versions to keep)"
+      logInfo "clean(): Deleting group ${candidate} (already identified sufficient versions to keep)"
       groupDelete "${candidate}"
 
     # Otherwise keep the group
     else
       KEPT+=(${candidate})
-      echo "clean(): Keeping group ${candidate}"
+      logInfo "clean(): Keeping group ${candidate}"
     fi
 
   done
 
-  echo "clean(): Summary: keeping ${KEPT[@]} ${MOST_RECENT}"
+  logInfo "clean(): Summary: keeping ${KEPT[@]} ${MOST_RECENT}"
 }
 
 
@@ -488,7 +470,7 @@ function getRouted() {
   local __route="${1}"; shift
   local __apps=("$@")
 
-  >&2 echo "Looking for application with route ${__route} among ${__apps[@]}"
+  >&2 logDebug "Looking for application with route ${__route} among ${__apps[@]}"
 
   local __routed_apps=()
   for app in "${__apps[@]}"; do
@@ -504,8 +486,8 @@ function getRouted() {
     done
   done
 
-  >&2 echo "${__route} is routed to ${__routed_apps[@]}"
-  echo "${__routed_apps[@]}"
+  >&2 logDebug "${__route} is routed to ${__routed_apps[@]}"
+  logDebug "${__routed_apps[@]}"
 }
 
 
@@ -532,5 +514,3 @@ except Exception, e:
   sys.exit(2)
 CODE
 }
-
-echo "activedeploy_common.sh included"

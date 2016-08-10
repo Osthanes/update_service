@@ -25,31 +25,30 @@ SCRIPTDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 AD_STEP_1=true
 source ${SCRIPTDIR}/check_and_set_env.sh
 
-echo "TARGET_PLATFORM = $TARGET_PLATFORM"
-echo "NAME = $NAME"
-echo "AD_ENDPOINT = $AD_ENDPOINT"
-echo "CONCURRENT_VERSIONS = $CONCURRENT_VERSIONS"
-echo "PORT = $PORT"
-echo "GROUP_SIZE = $GROUP_SIZE"
-echo "RAMPUP_DURATION = $RAMPUP_DURATION"
-echo "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
-echo "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
-echo "DEPLOYMENT_METHOD = ""$DEPLOYMENT_METHOD"
-echo "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
-echo "ROUTE_DOMAIN = $ROUTE_DOMAIN"
-echo "TOOLCHAIN_AVAILABLE = $TOOLCHAIN_AVAILABLE"
+logDebug "TARGET_PLATFORM = $TARGET_PLATFORM"
+logDebug "NAME = $NAME"
+logDebug "AD_ENDPOINT = $AD_ENDPOINT"
+logDebug "CONCURRENT_VERSIONS = $CONCURRENT_VERSIONS"
+logDebug "PORT = $PORT"
+logDebug "GROUP_SIZE = $GROUP_SIZE"
+logDebug "RAMPUP_DURATION = $RAMPUP_DURATION"
+logDebug "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
+logDebug "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
+logDebug "DEPLOYMENT_METHOD = ""$DEPLOYMENT_METHOD"
+logDebug "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
+logDebug "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 
 # check deployment method parameter and set create parms
 
 declare -A DEPLOYMENT_METHOD_ARG
 DEPLOYMENT_METHOD_ARG=( [Red Black]=rb [Resource Optimized]=rorb )
-#if [ ${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]+_} ]; then
-#  DEPLOYMENT_METHOD_CREATE_ARG="${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]}"
-#  echo "Found $DEPLOYMENT_METHOD - DEPLOYMENT_METHOD_CREATE_ARG: $DEPLOYMENT_METHOD_CREATE_ARG"
-#else
-#  echo -e "${red}ERROR: Invalid deployment method $DEPLOYMENT_METHOD detected${no_color}"
-#  exit 1
-#fi
+if [ ${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]+_} ]; then
+  DEPLOYMENT_METHOD_CREATE_ARG="${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]}"
+  logDebug "Found deployment method \"${DEPLOYMENT_METHOD}\" - DEPLOYMENT_METHOD_CREATE_ARG: \"${DEPLOYMENT_METHOD_CREATE_ARG}\""
+else
+  logError "Invalid deployment method ${DEPLOYMENT_METHOD} detected"
+  exit 1
+fi
 
 function exit_with_link() {
   local __status="${1}"
@@ -83,7 +82,7 @@ function delete_update() {
 
   delete ${__update} && delete_rc=$? || delete_rc=$?
   if (( ${delete_rc} )); then
-    echo "WARN: Unable to delete update record ${__update}"
+    logWarning "Unable to delete update record ${__update}"
   fi
 }
 
@@ -93,7 +92,7 @@ function cleanup() {
 
   clean && clean_rc=$? || clean_rc=$?
   if (( ${clean_rc} )); then
-    echo "WARN: Unable to delete old versions"
+    logWarning "Unable to delete old versions"
   fi
   delete_update ${__update}
 }
@@ -106,17 +105,13 @@ function rollback_and_cleanup() {
   cleanup
 }
 
-echo "----------------------------------- env start --------------------------------"
-env
-echo "----------------------------------- env end --------------------------------"
-
 # cd to target so can read ccs.py when needed (for route detection)
 cd ${SCRIPTDIR}
 
 originals=($(groupList))
 #originals=($(cf apps | cut -d' ' -f1))
 
-echo "Originals: ${originals[@]}"
+logDebug "Originals: ${originals[@]}"
 
 successor="${NAME}"
 
@@ -126,11 +121,11 @@ export UPDATE_ID=${BUILD_NUMBER}
 # Determine which original groups has the desired route --> the current original
 route="${ROUTE_HOSTNAME}.${ROUTE_DOMAIN}"
 ROUTED=($(getRouted "${route}" "${originals[@]}"))
-echo ${#ROUTED[@]} of original groups routed to ${route}: ${ROUTED[@]}
+logDebug ${#ROUTED[@]} of original groups routed to ${route}: ${ROUTED[@]}
 
 # If more than one routed app, select only the oldest
 if (( 1 < ${#ROUTED[@]} )); then
-  echo "WARNING: More than one app routed to ${route}; updating the oldest"
+  logWarning "More than one app routed to ${route}; updating the oldest"
 fi
 
 if (( 0 < ${#ROUTED[@]} )); then
@@ -143,42 +138,42 @@ fi
 
 # map/scale original deployment if necessary
 if [[ 1 = ${#originals[@]} ]] || [[ -z $original_grp ]]; then
-  echo "INFO: Initial version, scaling"
+  logInfo "Initial version, scaling"
   scaleGroup ${successor} ${GROUP_SIZE} && rc=$? || rc=$?
   if (( ${rc} )); then
-    echo "ERROR: Failed to scale ${successor} to ${GROUP_SIZE} instances"
+    logError "Failed to scale ${successor} to ${GROUP_SIZE} instances"
     exit ${rc}
   fi
-  echo "INFO: Initial version, mapping route"
+  logInfo "Initial version, mapping route"
   mapRoute ${successor} ${ROUTE_DOMAIN} ${ROUTE_HOSTNAME} && rc=$? || rc=$?
   if (( ${rc} )); then
-    echo "ERROR: Failed to map the route ${ROUTE_DOMAIN}.${ROUTE_HOSTNAME} to ${successor}"
+    logError "Failed to map the route ${ROUTE_DOMAIN}.${ROUTE_HOSTNAME} to ${successor}"
     exit ${rc}
   fi
   exit 0
 else
-  echo "INFO: Not initial version"
+  logInfo "Not initial version"
 fi
 
 # If a problem was found with $AD_ENDPOINT, fail now
 if [[ -n ${MUSTFAIL_ACTIVEDEPLOY} ]]; then
-  echo -e "${red}Active deploy service unavailable; failing.${no_color}"
+  logError "Active deploy service unavailable; failing."
   # Cleanup - delete older updates
   clean && clean_rc=$? || clean_rc=$?
   if (( $clean_rc )); then
-    echo "WARN: Unable to delete old versions."
+    logWarning "Unable to delete old versions."
   fi
   exit 128
 fi
 
 successor_grp=${NAME}
 
-echo "INFO: Original group is ${original_grp} (${original_grp_id})"
-echo "INFO: Successor group is ${successor_grp}  (${UPDATE_ID})"
+logDebug "Original group is ${original_grp} (${original_grp_id})"
+logDebug "Successor group is ${successor_grp}  (${UPDATE_ID})"
 
 # Do update if there is an original group
 if [[ -n "${original_grp}" ]]; then
-  echo "Beginning update with cf active-deploy-create ..."
+  logInfo "Beginning update with cf active-deploy-create ..."
 
   create_args="${original_grp} ${successor_grp} --manual --quiet --timeout 60s"
 
@@ -186,16 +181,16 @@ if [[ -n "${original_grp}" ]]; then
   if [[ -n "${RAMPDOWN_DURATION}" ]]; then create_args="${create_args} --rampdown ${RAMPDOWN_DURATION}"; fi
   create_args="${create_args} --test 1s";
 
-  if [[ -n "${DEPLOYMENT_METHOD_CREATE_ARG}" ]]; then create_args="${create_args} --algorithm ${DEPLOYMENT_METHOD_CREATE_ARG}"; fi
+  create_args="${create_args} --algorithm ${DEPLOYMENT_METHOD_CREATE_ARG}"
 
   active=$(find_active_update ${original_grp})
   if [[ -n ${active} ]]; then
-    echo "Original group ${original_grp} already engaged in an active update; rolling it back"
+    logWarning "Original group ${original_grp} already engaged in an active update; rolling it back"
     rollback ${active}
     # Check if it worked
     active=$(find_active_update ${original_grp})
     if [[ -n ${active} ]]; then
-      echo -e "${red}ERROR: Original group ${original_grp} still engaged in an active update; rollback did not work. Exiting.${no_color}"
+      logError "Original group ${original_grp} still engaged in an active update; rollback did not work. Exiting."
       with_retry active_deploy show ${active}
       exit 1
     fi
@@ -206,12 +201,12 @@ if [[ -n "${original_grp}" ]]; then
 
   # Unable to create update
   if (( ${create_rc} )); then
-    echo -e "${red}ERROR: failed to create update; ${update}${no_color}"
+    logError "Failed to create update; ${update}${no_color}"
     with_retry active_deploy list | grep "[[:space:]]${original_grp}[[:space:]]"
     exit ${create_rc}
   fi
 
-  echo "Initiated update: ${update}"
+  logInfo "Initiated update: ${update}"
   with_retry active_deploy show $update --timeout 60s
 
   # Identify URL for visualization of update. To do this:
@@ -221,99 +216,19 @@ if [[ -n "${original_grp}" ]]; then
 
   # Identify toolchain if available and send update details to it
   export PY_UPDATE_ID=$update
-  if (( ${TOOLCHAIN_AVAILABLE} )); then
-    echo "curl -s -k -H \"Authorization: ${TOOLCHAIN_TOKEN}\" https://otc-api.stage1.ng.bluemix.net/api/v1/toolchains/${PIPELINE_TOOLCHAIN_ID}?include=everything"
-    export TC_API_RES="$(curl -s -k -H "Authorization: ${TOOLCHAIN_TOKEN}" https://otc-api.stage1.ng.bluemix.net/api/v1/toolchains/${PIPELINE_TOOLCHAIN_ID}\?include\=everything)"
-    echo "+++ TC_API_RES +++:"
-    echo ${TC_API_RES}
-    echo "--- TC_API_RES ---"
-
-    echo ${TC_API_RES} | grep "invalid"
-    if [ $? -eq 0 ]; then
-      #error, invalid API token
-      echo "${red}ERROR: Invalid toolchain token.${no_color}"
-      [[ -z ${SKIP_ERROR} ]] && exit 42
-      # Invalid toolchain token is not a reason to fail
-    else
-      #proceed normally
-      export SERVICE_ID="$(python processJSON.py sid)"
-      export AD_API_URL="$(python processJSON.py ad-url)"
-      export PIPELINE_NAME="$(python processJSON.py $PIPELINE_ID)"
-
-      echo "SERVICE_ID=${SERVICE_ID}"
-      echo "AD_API_URL=${AD_API_URL}"
-      echo "PIPELINE_NAME=${PIPELINE_NAME}"
-
-      if [[ "${SERVICE_ID}x" == "0x" || "${AD_API_URL}x" == "0x" || "${PIPELINE_NAME}" == "0x" ]]; then
-         echo -e "${red}ERROR: Active deploy instance not found in toolchain${no_color}"
-         exit 42
-      fi
-
-      echo "curl -s -X PUT --data \"{\\\"organization_guid\\\": \\\"$CF_ORGANIZATION_ID\\\", \\\"ui_url\\\": \\\"$update_url\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/v1/service_instances/$SERVICE_ID\""
-      http_status=$(curl -s -w "%{http_code}" -X PUT --data "{\"organization_guid\": \"$CF_ORGANIZATION_ID\", \"ui_url\": \"$update_url\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/v1/service_instances/$SERVICE_ID" > curlRes.json)
-
-      echo "+++ curlRes +++"
-      cat curlRes.json
-      echo "--- curlRes ---"
-
-      if (( $? )); then
-        echo -e "${red}ERROR: Failed to record the first update${no_color}"
-        # Inability to record an update is not a reason to fail
-        [[ -z ${SKIP_ERROR} ]] && exit 42
-      fi
-      [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
-      if [[ "$http_status" != "200" ]]; then
-          echo -e "${red}ERROR: Received http status: $http_status${no_color}"
-          cat curlRes.json
-          [[ -z ${SKIP_ERROR} ]] && exit 42
-      fi
-      echo "curl -s -X PUT --data \"{\\\"update_id\\\": \\\"$PY_UPDATE_ID\\\", \\\"stage_name\\\": \\\"$IDS_STAGE_NAME\\\", \\\"space_id\\\": \\\"$CF_SPACE_ID\\\", \\\"ui_url\\\": \\\"$update_url\\\", \\\"pipeline_id\\\": \\\"$PIPELINE_ID\", \\\"pipeline_name\\\": \\\"$PIPELINE_NAME\\\", \\\"stage_id\\\": \\\"$PIPELINE_STAGE_ID\\\", \\\"job_id\\\": \\\"$IDS_JOB_ID\\\", \\\"ad_status\\\": \\\"\\\"}\" -H \"Authorization: ${TOOLCHAIN_TOKEN}\" -H \"Content-Type: application/json\" \"$AD_API_URL/register_deploy/$SERVICE_ID\""
-      http_status=$(curl -w "%{http_code}" -s -X PUT --data "{\"update_id\": \"$PY_UPDATE_ID\", \"stage_name\": \"$IDS_STAGE_NAME\", \"space_id\": \"$CF_SPACE_ID\", \"ui_url\": \"$update_url\", \"pipeline_id\": \"$PIPELINE_ID\", \"pipeline_name\": \"$PIPELINE_NAME\", \"stage_id\": \"$PIPELINE_STAGE_ID\", \"job_id\": \"$IDS_JOB_ID\", \"ad_status\": \"\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID")
-      if (( $? )); then
-        echo -e "${red}ERROR: Failed to record the second update${no_color}"
-        [[ -z ${SKIP_ERROR} ]] && exit 42
-        # Inability to record an update is not a reason to fail
-      fi
-      [[ "$http_status" =~ ([0-9]+)$ ]] && http_status=${BASH_REMATCH[1]}   # extract trailing http code
-      if [[ "$http_status" != "200" ]]; then
-          echo -e "${red}ERROR: Received http status: $http_status${no_color}"
-          [[ -z ${SKIP_ERROR} ]] && exit 42
-      fi
-    fi
-
-    echo "organization_guid: $CF_ORGANIZATION_ID"
-    echo "ui_url: $update_url"
-    echo "URL: $AD_API_URL/v1/service_instances/$SERVICE_ID"
-    echo
-    echo "update_id:$PY_UPDATE_ID"
-    echo "stage_name: $IDS_STAGE_NAME"
-    echo "space_id: $CF_SPACE_ID"
-    echo "pipeline_id: $PIPELINE_ID"
-    echo "pipeline_name: $PIPELINE_NAME"
-    echo "stage_id: $PIPELINE_STAGE_ID"
-    echo "job_id: $IDS_JOB_ID"
-    echo "ad_status: "
-    echo "$AD_API_URL/register_deploy/$SERVICE_ID"
-    echo
-
-    echo "PIPELINE_TOOLCHAIN_ID=${PIPELINE_TOOLCHAIN_ID}"
-
-  else
-    echo "INFO: Running in V1 environment, no broker available."
-  fi
 
   # Wait for completion of rampup phase
   wait_phase_completion $update && rc=$? || rc=$?
-  echo "wait result is $rc"
+  logInfo "Wait result is $rc"
   case "$rc" in
     0) # phase done
     # continue (advance to test)
-    echo "Phase done, advance to test"
+    logInfo "Phase done, advance to test"
     advance $update && advance_rc=$? || advance_rc=$?
     if (( ${advance_rc} )); then
       case "${advance_rc}" in
         0) # phase done
-        echo "INFO: test phase complete"
+        logInfo "Test phase complete"
         ;;
         1) # completed
         delete_update ${update}
@@ -350,7 +265,7 @@ if [[ -n "${original_grp}" ]]; then
 
     1) # completed
     # cannot rollback; delete; return OK
-    echo "Cannot rollback, phase completed. Deleting update record"
+    logError "Cannot rollback, phase completed. Deleting update record"
     delete_udpate $update
     ;;
 
@@ -359,7 +274,7 @@ if [[ -n "${original_grp}" ]]; then
 
     # stop rolled back app
     out=$(stopGroup ${successor_grp})
-    echo "${successor_grp} stopped after rollback"
+    logInfo "${successor_grp} stopped after rollback"
 
     cleanup ${update}
 
