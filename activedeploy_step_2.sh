@@ -111,7 +111,7 @@ else
   echo "xxxx2 the return code is $rc"
   logInfo "Test failure -- rolling back update ${update_id}"
   rollback ${update_id} && rc=$? || rc=$?
-  echo "xxxx3: the return code is $rc"
+  echo "xxxx3: activedeploy_step2.sh - the return code from active_deploy rollback is: $rc"
   if (( $rc )); then
     logInfo "$(wait_comment $rc)"
   fi

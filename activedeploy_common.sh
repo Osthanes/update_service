@@ -205,8 +205,9 @@ function rollback() {
   with_retry active_deploy show ${__update_id}
 
   active_deploy rollback ${__update_id} && rc=$? || rc=$?
+  echo "xxxx: ad_common.sh - rc is: $rc this is because active_deploy rollback is returning with $rc"
   if [[ $rc -eq 0 ]]; then
-  	wait_phase_completion ${__update_id} && rc=$? || rc=$?
+    wait_phase_completion ${__update_id} && rc=$? || rc=$?
 
 	# stop rolled back app
 	properties=($(with_retry active_deploy show ${__update_id} | grep "successor group: "))
@@ -218,9 +219,11 @@ function rollback() {
 	#app_name=$(get_property 'successor group' ${properties[@]} | sed -e '#s/ app.*$##')
 	out=$(stopGroup ${app_name})
 	>&2 logInfo "${app_name} stopped after rollback"
+  echo "xxxx: ad_common.sh - stopped the app after rollback"
 
   fi
   >&2 logInfo "Return code for rollback is ${rc}"
+  echo "xxxx: ad_common.sh - Return code for rollback is: ${rc}"
   return ${rc}
 }
 
