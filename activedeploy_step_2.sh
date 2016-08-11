@@ -103,15 +103,21 @@ if [[ ${TEST_RESULT_FOR_AD} -eq 0 ]]; then
   # Second advance to final phase
   advance ${update_id} && rc=$? || rc=$?
   if (( $rc )); then
+    echo "xxxx0: the return code is $rc" # expected to be 0, when TEST_RESULT_FOR_AD=1
     logError "Unable to advance to final phase"
   fi
 else
+  echo "xxxx01: TEST_RESULT_FOR_AD is: ${TEST_RESULT_FOR_AD}"
+  echo "xxxx1: Test failure - rolling back update ${update_id}"
+  echo "xxxx2: the return code is $rc"
   logInfo "Test failure -- rolling back update ${update_id}"
   rollback ${update_id} && rc=$? || rc=$?
+  echo "xxxx3: the return code is $rc"
   if (( $rc )); then
     logInfo "$(wait_comment $rc)"
   fi
   # rc will be the exit code; we want a failure code if there was a rollback
+  # not clear why in case of rollback rc=2. Rollback is fine, but job exits with failure? 
   rc=2
 fi
 
