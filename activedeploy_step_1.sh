@@ -40,16 +40,6 @@ logDebug "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 
 # check deployment method parameter and set create parms
 
-declare -A DEPLOYMENT_METHOD_ARG
-DEPLOYMENT_METHOD_ARG=( [Red Black]=rb [Resource Optimized]=rorb )
-if [ ${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]+_} ]; then
-  DEPLOYMENT_METHOD_CREATE_ARG="${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]}"
-  logDebug "Found deployment method \"${DEPLOYMENT_METHOD}\" - DEPLOYMENT_METHOD_CREATE_ARG: \"${DEPLOYMENT_METHOD_CREATE_ARG}\""
-else
-  logError "Invalid deployment method ${DEPLOYMENT_METHOD} detected"
-  exit 1
-fi
-
 function exit_with_link() {
   local __status="${1}"
   local __message="${2}"

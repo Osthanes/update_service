@@ -21,26 +21,39 @@ function debugme() {
   [[ -n ${DEBUG} ]] && "$@" || :
 }
 
-export LOG_LEVEL=${LOG_LEVEL:-2}
+export LOG_LEVEL=${LOG_LEVEL:-3}
 
 function logError() {
-  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 1 ]] && echo -e "${red}ERROR: $@${no_color}"
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 1 ]] && echo -e "${red}--- ERROR: $@${no_color}"
 }
 
 function logWarning() {
-  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 2 ]] && echo -e "${label_color}WARNING: $@${no_color}"
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 2 ]] && echo -e "${label_color}--- WARNING: $@${no_color}"
 }
 
 function logInfo() {
-  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 3 ]] && echo -e "${white}INFO: $@${no_color}"
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 3 ]] && echo -e "${white}--- INFO: $@${no_color}"
 }
 
 function logDebug() {
-  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 4 ]] && echo -e "${cyan}DEBUG: $@${no_color}"
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 4 ]] && echo -e "${cyan}--- DEBUG: $@${no_color}"
 }
 
 # Default value; should be sert in target platform specific files (CloudFoundry.sh, Container.sh, etc)
 if [[ -z ${MIN_MAX_WAIT} ]]; then MIN_MAX_WAIT=90; fi
+
+# Check if parameter is a valid integer
+function isInteger() {
+  local regex="^[0-9]+$"
+
+  [[ "${1}" =~ $regex ]] && return 0 || return 1
+}
+
+# Check if parameter is a valid time specifier
+function isValidTime() {
+  local regex="^[0-9][smh]+$"
+  [[ "${1}" =~ $regex ]] && return 0 || return 1
+}
 
 # Remove white space from the start of string
 # Usage: trim_start string
