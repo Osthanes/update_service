@@ -107,11 +107,11 @@ if [[ ${TEST_RESULT_FOR_AD} -eq 0 ]]; then
   fi
 else
   echo "TEST_RESULT_FOR_AD is: ${TEST_RESULT_FOR_AD}"
-  echo "Test failure - rolling back update ${update_id}"
-  echo "xxxx2 the return code is $rc"
+  echo "Tests are failing (all or partial) - therefore rolling back update ${update_id}"
+  echo "Active Deploy Complete job will exit with failure."
+
   logInfo "Test failure -- rolling back update ${update_id}"
   rollback ${update_id} && rc=$? || rc=$?
-  echo "xxxx3: activedeploy_step2.sh - the return code from active_deploy rollback is: $rc"
   if (( $rc )); then
     logInfo "$(wait_comment $rc)"
   fi
