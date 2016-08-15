@@ -296,7 +296,7 @@ function wait_phase_completion() {
       return 0
       ;;
       rolled\ back)
-      echo "${update_status} - Rolled back successfully, Active Deploy Complete will exit with failure."
+      logInfo "${update_status} - Rolled back successfully, Active Deploy Complete will exit with failure."
       return 2
       ;;
       failed)
