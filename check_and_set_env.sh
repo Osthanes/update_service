@@ -21,26 +21,30 @@
 
 export LANG=en_US  # Hard-coded because there is a defect w/ en_US.UTF-8
 
-# Colors
-export green='\e[0;32m'
-export red='\e[0;31m'
-export label_color='\e[0;33m'
-export no_color='\e[0m' # No Color
-
-echo "EXT_DIR=$EXT_DIR"
-if [[ -f $EXT_DIR/common/cf ]]; then
-  PATH=$EXT_DIR/common:$PATH
-fi
-echo $PATH
-
 # Pull in common methods
 source ${SCRIPTDIR}/activedeploy_common.sh
 
-# Identify TARGET_PLATFORM (CloudFoundry or Containers) and pull in specific implementations
-if [[ -z ${TARGET_PLATFORM} ]]; then
-  echo "WARNING: Target platform not specified; defaulting to 'CloudFoundry'"
-  export TARGET_PLATFORM='CloudFoundry'
+logDebug "EXT_DIR=$EXT_DIR"
+if [[ -f $EXT_DIR/common/cf ]]; then
+  PATH=$EXT_DIR/common:$PATH
 fi
+logDebug "PATH=$(echo $PATH)"
+
+# Identify TARGET_PLATFORM (CloudFoundry or Containers) and pull in specific implementations
+
+if [[ -z ${TARGET_PLATFORM} ]]; then
+  logWarning "Target platform not specified; defaulting to 'CloudFoundry'"
+  export TARGET_PLATFORM='CloudFoundry'
+else
+  TARGET_PLATFORM_ARGS=( CloudFoundry Container )
+  if [[ " ${TARGET_PLATFORM_ARGS[@]} " =~ " ${TARGET_PLATFORM} " ]]; then
+    export TARGET_PLATFORM
+  else
+    logError "Invalid target platform '${TARGET_PLATFORM}' detected"
+    exit 1
+  fi
+fi
+
 source "${SCRIPTDIR}/${TARGET_PLATFORM}.sh"
 
 # Identify NAME if not set from other likely variables
@@ -53,7 +57,7 @@ if [[ -z ${NAME} ]] && [[ -n ${CONTAINER_NAME} ]]; then
 fi
 
 if [[ -z ${NAME} ]]; then
-  echo "Environment variable NAME must be set to the name of the successor application or container group"
+  logError "Environment variable NAME must be set to the name of the successor application or container group"
   exit 1
 fi
 
@@ -62,26 +66,26 @@ fi
 if [[ -n "${AD_ENDPOINT}" ]]; then
   up=$(timeout 10 curl -s ${AD_ENDPOINT}/health_check/ | grep status | grep up)
   if [[ -z "${up}" ]]; then
-    echo -e "${red}ERROR: Unable to validate availability of Active Deploy service ${AD_ENDPOINT}; failing active deploy${no_color}"
+    logError "Unable to validate availability of Active Deploy service ${AD_ENDPOINT}; failing active deploy"
     export MUSTFAIL_ACTIVEDEPLOY=true
   else
-    supports_target ${AD_ENDPOINT} ${CF_TARGET_URL} 
+    supports_target ${AD_ENDPOINT} ${CF_TARGET_URL}
     if (( $? )); then
-      echo -e "${red}ERROR: Selected Active Deploy service (${AD_ENDPOINT}) does not support target environment (${CF_TARGET_URL}); failing active deploy${no_color}"
+      logError "Selected Active Deploy service (${AD_ENDPOINT}) does not support target environment (${CF_TARGET_URL}); failing active deploy"
       export MUSTFAIL_ACTIVEDEPLOY=true
     fi
   fi
 fi
 
 # Set default (1) for CONCURRENT_VERSIONS
-if [[ -z ${CONCURRENT_VERSIONS} ]]; then export CONCURRENT_VERSIONS=2; fi
-
-# Check if the pipeline is in the context of a toolchain by querying the toolchain broker. 
-# If so, set TOOLCHAIN_AVAILABLE to 1; otherwise to 0
-curl -s --head -H "Authorization: ${TOOLCHAIN_TOKEN}" https://otc-api.stage1.ng.bluemix.net/api/v1/toolchains/${PIPELINE_TOOLCHAIN_ID}\?include\=everything | head -n 1 | grep "HTTP/1.[01] [23].." > /dev/null
-if (( $? )); then TOOLCHAIN_AVAILABLE=0; else TOOLCHAIN_AVAILABLE=1; fi
-export TOOLCHAIN_AVAILABLE
-
+if [[ -z ${CONCURRENT_VERSIONS} ]]; then
+  export CONCURRENT_VERSIONS=2;
+else
+  if ! isInteger "${CONCURRENT_VERSIONS}"; then
+    logError "Invalid concurrent version '${CONCURRENT_VERSIONS}' detected"
+    exit 1
+  fi
+fi
 
 ###################
 ################### Needed only for step_1
@@ -91,31 +95,46 @@ if [[ -n $AD_STEP_1 ]]; then
   # Set default for PORT
   if [[ -z ${PORT} ]]; then
     export PORT=80
-    echo "Port not specified by environment variable PORT; using ${PORT}"
+    logWarning "Port not specified by environment variable PORT; using ${PORT}"
   fi
 
   # Set default for GROUP_SIZE
   if [[ -z ${GROUP_SIZE} ]]; then
     export GROUP_SIZE=1
-    echo "Group size not specified by environment variable GROUP_SIZE; using ${GROUP_SIZE}"
+    logWarning "Group size not specified by environment variable GROUP_SIZE; using ${GROUP_SIZE}"
+  else
+    if ! isInteger "${GROUP_SIZE}"; then
+      logError "Invalid groupsize '${GROUP_SIZE}' detected"
+      exit 1
+    fi
   fi
 
   # Set default for RAMPUP_DURATION
   if [[ -z ${RAMPUP_DURATION} ]]; then
     export RAMPUP_DURATION="5m"
-    echo "Rampup duration not specified by environment variable RAMPUP_DURATION; using ${RAMPUP_DURATION}"
+    logWarning "Rampup duration not specified by environment variable RAMPUP_DURATION; using ${RAMPUP_DURATION}"
+  else
+    if ! isValidTime "${RAMPUP_DURATION}"; then
+      logError "Invalid rampup duration '${RAMPUP_DURATION}' detected"
+      exit 1
+    fi
   fi
 
   # Set default for RAMPDOWN_DURATION
   if [[ -z ${RAMPDOWN_DURATION} ]]; then
     export RAMPDOWN_DURATION="5m"
-    echo "Rampdown duration not specified by environment variable RAMPDOWN_DURATION; using ${RAMPDOWN_DURATION}"
+    logWarning "Rampdown duration not specified by environment variable RAMPDOWN_DURATION; using ${RAMPDOWN_DURATION}"
+  else
+      if ! isValidTime "${RAMPDOWN_DURATION}"; then
+        logError "Invalid rampdown duration '${RAMPDOWN_DURATION}' detected"
+        exit 1
+      fi
   fi
 
   # Set default for ROUTE_HOSTNAME
   if [[ -z ${ROUTE_HOSTNAME} ]]; then
     export ROUTE_HOSTNAME=$(echo $NAME | rev | cut -d_ -f2- | rev | sed -e 's#_#-##g')
-    echo "Route hostname not specified by environment variable ROUTE_HOSTNAME; using ${ROUTE_HOSTNAME}"
+    logWarning "Route hostname not specified by environment variable ROUTE_HOSTNAME; using '${ROUTE_HOSTNAME}'"
   fi
 
   # Set default for ROUTE_DOMAIN
@@ -136,12 +155,22 @@ if [[ -n $AD_STEP_1 ]]; then
     defaulted_domain=1
   fi
   if [[ -z ${ROUTE_DOMAIN} ]]; then
-    echo "Route domain not specified by environment variable ROUTE_DOMAIN and no suitable alternative could be identified"
+    logError "Route domain not specified by environment variable ROUTE_DOMAIN and no suitable alternative could be identified"
     exit 1
   fi
 
   if (( ${defaulted_domain} )); then
-    echo "Route domain not specified by environment variable ROUTE_DOMAIN; using ${ROUTE_DOMAIN}"
+    logInfo "Route domain not specified by environment variable ROUTE_DOMAIN; using '${ROUTE_DOMAIN}'"
+  fi
+
+  declare -A DEPLOYMENT_METHOD_ARG
+  DEPLOYMENT_METHOD_ARG=( [Red Black]=rb [Resource Optimized]=rorb )
+  if [ ${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]+_} ]; then
+    DEPLOYMENT_METHOD_CREATE_ARG="${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]}"
+    logDebug "Found deployment method \"${DEPLOYMENT_METHOD}\" - DEPLOYMENT_METHOD_CREATE_ARG: \"${DEPLOYMENT_METHOD_CREATE_ARG}\""
+  else
+    logError "Invalid deployment method '${DEPLOYMENT_METHOD}' detected"
+    exit 1
   fi
 
 fi # if [[ -n ${AD_STEP_1} ]]; then
@@ -174,4 +203,3 @@ ad_server_url=$(active_deploy service-info | grep "service endpoint: " | sed 's/
 update_gui_url=$(curl -s ${ad_server_url}/v1/info/ | grep update_gui_url | awk '{print $2}' | sed 's/"//g' | sed 's/,//')
 
 show_link "Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
-

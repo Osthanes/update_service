@@ -23,11 +23,10 @@ fi
 SCRIPTDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 source ${SCRIPTDIR}/check_and_set_env.sh
 
-echo "TARGET_PLATFORM = $TARGET_PLATFORM"
-echo "NAME = $NAME"
-echo "AD_ENDPOINT = $AD_ENDPOINT"
-echo "CONCURRENT_VERSIONS = $CONCURRENT_VERSIONS"
-echo "TOOLCHAIN_AVAILABLE = $TOOLCHAIN_AVAILABLE"
+logDebug "TARGET_PLATFORM = $TARGET_PLATFORM"
+logDebug "NAME = $NAME"
+logDebug "AD_ENDPOINT = $AD_ENDPOINT"
+logDebug "CONCURRENT_VERSIONS = $CONCURRENT_VERSIONS"
 
 # cd to target so can read ccs.py when needed (for group deletion)
 cd ${SCRIPTDIR}
@@ -37,23 +36,23 @@ originals=($(groupList))
 
 # Nothing to do in initial deploy scenario
 if [[ 1 = ${#originals[@]} ]]; then
-  echo "INFO: Initial version (single version deployed); exiting"
+  logInfo "Initial version (single version deployed); exiting"
   exit 0
 fi
 
 # If a problem was found with $AD_ENDPOINT, fail now
 if [[ -n ${MUSTFAIL_ACTIVEDEPLOY} ]]; then
-  echo -e "${red}Active deploy service unavailable; failing.${no_color}"
+  logError "Active deploy service unavailable; failing."
   exit 128
 fi
 
-# Identify the active deploy in progress. We do so by looking for a deploy 
+# Identify the active deploy in progress. We do so by looking for a deploy
 # involving the add / container named "${NAME}"
 in_prog=$(with_retry active_deploy list | grep "${NAME}" | grep "in_progress")
 read -a array <<< "$in_prog"
 update_id=${array[0]}
 if [[ -z "${update_id}" ]]; then
-  echo "INFO: Initial version (no update containing ${NAME}); exiting"
+  logInfo "Initial version (no update containing ${NAME}); exiting"
   with_retry active_deploy list
   exit 0
 fi
@@ -64,7 +63,7 @@ show_link "Deployment URL" \
           "${update_gui_url}/deployments/${update_id}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" \
           ${green}
 
-echo "INFO: Not initial version (part of update ${update_id})"
+logInfo "Not initial version (part of update ${update_id})"
 with_retry active_deploy show ${update_id}
 
 IFS=$'\n' properties=($(with_retry active_deploy show ${update_id} | grep ':'))
@@ -73,17 +72,17 @@ update_status=$(get_property 'status' ${properties[@]})
 # TODO handle other statuses better: could be rolled back, rolling back, paused, failed, ...
 # Insufficient to leave it and let the wait_phase_completion deal with it; the call to advance/rollback could fail
 if [[ "${update_status}" != 'in_progress' ]]; then
-  echo "Deployment in unexpected status: ${update_status}"
+  logError "Deployment in unexpected status: ${update_status}"
   rollback ${update_id}
   delete ${update_id}
   exit 1
 fi
 
 # If TEST_RESULT_FOR_AD not set, assume the test succeeded. If the value wasn't set, then the user
-# didn't modify the test job. However, we got to this job, so the test job must have 
-# completed successfully. Note that we are assuming that a test failure would terminate 
-# the pipeline.  
-if [[ -z ${TEST_RESULT_FOR_AD} ]]; then 
+# didn't modify the test job. However, we got to this job, so the test job must have
+# completed successfully. Note that we are assuming that a test failure would terminate
+# the pipeline.
+if [[ -z ${TEST_RESULT_FOR_AD} ]]; then
   TEST_RESULT_FOR_AD=0;
 fi
 
@@ -94,22 +93,24 @@ if [[ ${TEST_RESULT_FOR_AD} -eq 0 ]]; then
   advance ${update_id}  && rc=$? || rc=$?
   # If failure doing advance, then rollback
   if (( $rc )); then
-    echo "ERROR: Advance to rampdown failed; rolling back update ${update_id}"
+    logError "Advance to rampdown failed; rolling back update ${update_id}"
     rollback ${update_id} || true
     if (( $rollback_rc )); then
-      echo "WARN: Unable to rollback update"
-      echo $(wait_comment $rollback_rc)
-    fi 
+      logError "Unable to rollback update"
+      logError $(wait_comment $rollback_rc)
+    fi
   fi
   # Second advance to final phase
   advance ${update_id} && rc=$? || rc=$?
   if (( $rc )); then
-    echo "ERROR: Unable to advance to final phase"
+    logError "Unable to advance to final phase"
   fi
 else
-  echo "Test failure -- rolling back update ${update_id}"
+  logInfo "Test failure -- rolling back update ${update_id}"
   rollback ${update_id} && rc=$? || rc=$?
-  if (( $rc )); then echo $(wait_comment $rc); fi
+  if (( $rc )); then
+    logInfo "$(wait_comment $rc)"
+  fi
   # rc will be the exit code; we want a failure code if there was a rollback
   rc=2
 fi
@@ -117,15 +118,15 @@ fi
 # Cleanup - delete older updates
 clean && clean_rc=$? || clean_rc=$?
 if (( $clean_rc )); then
-  echo "WARN: Unable to delete old versions."
-  echo $(wait_comment $clean_rc)
+  logWarning "Unable to delete old versions."
+  logWarning $(wait_comment $clean_rc)
 fi
 
 # Cleanup - delete update record
-echo "Deleting upate record"
+logInfo "Deleting upate record"
 delete ${update_id} && delete_rc=$? || delete_rc=$?
 if (( $delete_rc )); then
-  echo "WARN: Unable to delete update record ${update_id}"
+  logWarning "Unable to delete update record ${update_id}"
 fi
 
 exit $rc
