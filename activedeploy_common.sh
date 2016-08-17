@@ -354,7 +354,7 @@ function wait_phase_completion() {
         >&2 logInfo "Phase ${update_phase} is complete"
         return 0
       else
-        >&2 logInfo "Phase ${update_phase} progress is: ${phase_progress}"
+        >&2 logDebug "Phase ${update_phase} progress is: ${phase_progress}"
       fi
     fi # if [[ "in_progress" == "${update_status}" ]]
     # determine the expected time if haven't done so already; update end_time
@@ -487,12 +487,12 @@ function getRouted() {
 
   local __routed_apps=()
   for app in "${__apps[@]}"; do
-    # >&2 echo "Considering app: $app"
+    >&2 logDebug "Considering app: $app"
     app_routes=($(getRoutes ${app}))
-    # >&2 echo "Routes for $app are: ${app_routes[@]}"
+    >&2 logDebug "Routes for $app are: ${app_routes[@]}"
     for rt in ${app_routes[@]}; do
       if [[ "${rt}" == "${__route}" ]]; then
-        # >&2 echo "FOUND app: ${app}"
+        >&2 logDebug "FOUND app: ${app}"
         __routed_apps+=(${app})
         break
       fi

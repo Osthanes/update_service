@@ -27,6 +27,7 @@ logDebug "TARGET_PLATFORM = $TARGET_PLATFORM"
 logDebug "NAME = $NAME"
 logDebug "AD_ENDPOINT = $AD_ENDPOINT"
 logDebug "CONCURRENT_VERSIONS = $CONCURRENT_VERSIONS"
+logDebug "TEST_RESULT_FOR_AD = $TEST_RESULT_FOR_AD"
 
 # cd to target so can read ccs.py when needed (for group deletion)
 cd ${SCRIPTDIR}
