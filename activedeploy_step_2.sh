@@ -107,7 +107,9 @@ if [[ ${TEST_RESULT_FOR_AD} -eq 0 ]]; then
     logError "Unable to advance to final phase"
   fi
 else
+  logInfo "TEST_RESULT_FOR_AD is: ${TEST_RESULT_FOR_AD}"
   logInfo "Test failure -- rolling back update ${update_id}"
+  logInfo "After rollback, Active Deploy Complete job will exit with failure."
   rollback ${update_id} && rc=$? || rc=$?
   if (( $rc )); then
     logInfo "$(wait_comment $rc)"
