@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #********************************************************************************
-# Copyright 2016 IBM
+#   (c) Copyright 2016 IBM Corp.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -98,6 +98,9 @@ function rollback_and_cleanup() {
 # cd to target so can read ccs.py when needed (for route detection)
 cd ${SCRIPTDIR}
 
+debugme echo "--- cat ${HOME}/.cf/config.json ---"
+debugme cat ${HOME}/.cf/config.json
+
 originals=($(groupList))
 #originals=($(cf apps | cut -d' ' -f1))
 
@@ -119,9 +122,10 @@ if (( 1 < ${#ROUTED[@]} )); then
 fi
 
 if (( 0 < ${#ROUTED[@]} )); then
-  original_grp=${ROUTED[0]}
-  #original_grp=${ROUTED[$(expr ${#ROUTED[@]} - 1)]}
-  original_grp_id=${original_grp#_*}
+  readarray -t srtd < <(for e in "${ROUTED[@]}"; do echo "$e"; done | sort)
+  original_grp=${srtd[0]}
+  original_grp_id=${original_grp#*_}
+  logDebug "Original_grp: $original_grp - Original_grp_id: $original_grp_id"
 fi
 
 # At this point if original_grp is not set, we didn't find any routed apps; ie, is initial deploy
@@ -159,7 +163,7 @@ fi
 successor_grp=${NAME}
 
 logDebug "Original group is ${original_grp} (${original_grp_id})"
-logDebug "Successor group is ${successor_grp}  (${UPDATE_ID})"
+logDebug "Successor group is ${successor_grp} (${UPDATE_ID})"
 
 # Do update if there is an original group
 if [[ -n "${original_grp}" ]]; then

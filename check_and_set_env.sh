@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #********************************************************************************
-# Copyright 2016 IBM
+#   (c) Copyright 2016 IBM Corp.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@
 
 export LANG=en_US  # Hard-coded because there is a defect w/ en_US.UTF-8
 
+UNDEFINED="undefined"
+
 # Pull in common methods
 source ${SCRIPTDIR}/activedeploy_common.sh
 
@@ -32,15 +34,25 @@ logDebug "PATH=$(echo $PATH)"
 
 # Identify TARGET_PLATFORM (CloudFoundry or Containers) and pull in specific implementations
 
-if [[ -z ${TARGET_PLATFORM} ]]; then
-  logWarning "Target platform not specified; defaulting to 'CloudFoundry'"
-  export TARGET_PLATFORM='CloudFoundry'
+if [[ -z "${TARGET_PLATFORM}" ]]; then
+  if [[ -z "${DEPLOY_TYPE}" ]]; then
+    logWarning "Target platform not specified; defaulting to 'CloudFoundry'"
+    export TARGET_PLATFORM='CloudFoundry'
+  else
+    if [[ "${DEPLOY_TYPE}" == "simple" ]]; then
+      logInfo "Found container deploy type ${DEPLOY_TYPE}. Defaulting target platform to 'Container'"
+      export TARGET_PLATFORM='Container'
+    else
+      logError "Invalid container deploy type '${DEPLOY_TYPE}' detected. Use 'simple' instead"
+      exit 1
+    fi
+  fi
 else
   TARGET_PLATFORM_ARGS=( CloudFoundry Container )
   if [[ " ${TARGET_PLATFORM_ARGS[@]} " =~ " ${TARGET_PLATFORM} " ]]; then
     export TARGET_PLATFORM
   else
-    logError "Invalid target platform '${TARGET_PLATFORM}' detected"
+    logError "Invalid target platform '${TARGET_PLATFORM}' detected. Vaild target platforms are 'CloudFoundry' or 'Container'"
     exit 1
   fi
 fi
@@ -48,16 +60,20 @@ fi
 source "${SCRIPTDIR}/${TARGET_PLATFORM}.sh"
 
 # Identify NAME if not set from other likely variables
-if [[ -z ${NAME} ]] && [[ -n ${CF_APP_NAME} ]]; then
+if [[ -z "${NAME}" ]] && [[ -n "${CF_APP_NAME}" ]]; then
   export NAME="${CF_APP_NAME}"
 fi
 
-if [[ -z ${NAME} ]] && [[ -n ${CONTAINER_NAME} ]]; then
+if [[ -z "${NAME}" ]] && [[ -n "${CONTAINER_NAME}" ]]; then
   export NAME="${CONTAINER_NAME}"
 fi
 
-if [[ -z ${NAME} ]]; then
+if [[ -z "${NAME}" ]]; then
   logError "Environment variable NAME must be set to the name of the successor application or container group"
+  exit 1
+fi
+if [[ "${NAME}" == "${UNDEFINED}" ]]; then
+  logError "Environment variable NAME must be defined in the environment properties"
   exit 1
 fi
 
@@ -69,7 +85,7 @@ if [[ -n "${AD_ENDPOINT}" ]]; then
     logError "Unable to validate availability of Active Deploy service ${AD_ENDPOINT}; failing active deploy"
     export MUSTFAIL_ACTIVEDEPLOY=true
   else
-    supports_target ${AD_ENDPOINT} ${CF_TARGET_URL}
+    supports_target "${AD_ENDPOINT}" "${CF_TARGET_URL}"
     if (( $? )); then
       logError "Selected Active Deploy service (${AD_ENDPOINT}) does not support target environment (${CF_TARGET_URL}); failing active deploy"
       export MUSTFAIL_ACTIVEDEPLOY=true

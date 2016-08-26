@@ -1,7 +1,7 @@
-#/bin/bash
+#!/bin/bash
 
 #********************************************************************************
-# Copyright 2016 IBM
+#   (c) Copyright 2016 IBM Corp.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -414,6 +414,7 @@ function clean() {
   PATTERN=$(echo $NAME | rev | cut -d_ -f2- | rev)
   VERSION=$(echo $NAME | rev | cut -d_ -f1 | rev)
 
+  unset IFS
   candidates=($(groupList))
   logDebug "clean(): Found ${#candidates[@]} versions: ${candidates[@]}"
 

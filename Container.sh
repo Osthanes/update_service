@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #********************************************************************************
-# Copyright 2016 IBM
+#   (c) Copyright 2016 IBM Corp.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import os
 import sys
 s = ccs.ContainerCloudService()
 groups = s.list_groups(timeout=30)
-sys.write.stderr('groupList: {}\n'.format(groups))
+sys.stderr.write('groupList: {}\n'.format(groups))
 names = [g.get('Name', '') for g in groups]
 print('{}'.format(' '.join(names)))
 CODE

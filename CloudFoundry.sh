@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #********************************************************************************
-# Copyright 2016 IBM
+#   (c) Copyright 2016 IBM Corp.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ MIN_MAX_WAIT=90
 # Return list of names of existing versions
 # Usage: groupList
 function groupList() {
-  PATTERN=$(echo $NAME | rev | cut -d_ -f2- | rev)  
+  PATTERN=$(echo $NAME | rev | cut -d_ -f2- | rev)
   cf apps | grep "^${PATTERN}_[0-9]*[[:space:]]" | cut -d' ' -f1
   ## TODO error checking on result of cf apps call
 }
@@ -40,7 +40,7 @@ function mapRoute() {
   local __name="${1}"
   local __domain="${2}"
   local __host="${3}"
-  
+
   cf map-route ${__name} ${__domain} -n ${__host} && rc=$? || rc=$?
   return ${rc}
 }
@@ -51,7 +51,7 @@ function mapRoute() {
 function scaleGroup() {
   local __name="${1}"
   local __size=${2}
-  
+
   cf scale ${__name} -i ${__size} && rc=$? || rc=$?
   return ${rc}
 }
