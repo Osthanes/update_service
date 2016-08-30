@@ -13,6 +13,7 @@
 #   distributed under the License is distributed on an "AS IS" BASIS,
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
+#   limitations under the License.
 #********************************************************************************
 
 ###################
@@ -108,11 +109,6 @@ fi
 ###################
 
 if [[ -n $AD_STEP_1 ]]; then
-  # Set default for PORT
-  if [[ -z ${PORT} ]]; then
-    export PORT=80
-    logWarning "Port not specified by environment variable PORT; using ${PORT}"
-  fi
 
   # Set default for GROUP_SIZE
   if [[ -z ${GROUP_SIZE} ]]; then
@@ -177,6 +173,11 @@ if [[ -n $AD_STEP_1 ]]; then
 
   if (( ${defaulted_domain} )); then
     logInfo "Route domain not specified by environment variable ROUTE_DOMAIN; using '${ROUTE_DOMAIN}'"
+  fi
+
+  if [[ -z "${DEPLOYMENT_METHOD}" ]]; then
+    DEPLOYMENT_METHOD="Red Black"
+    logWarning "Deployment method not specified by environment variable DEPLOYMENT_METHOD; using '${DEPLOYMENT_METHOD}'"
   fi
 
   declare -A DEPLOYMENT_METHOD_ARG
