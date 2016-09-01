@@ -33,18 +33,30 @@ if [[ -f $EXT_DIR/common/cf ]]; then
 fi
 logDebug "PATH=$(echo $PATH)"
 
+if [[ -z "${NAME}" ]]; then
+  logError "Environment variable NAME must be set to the name of the successor application or container group"
+  exit 1
+fi
+if [[ "${NAME}" == "${UNDEFINED}" ]]; then
+  logError "Environment variable NAME must be defined in the environment properties"
+  exit 1
+fi
+
 # Identify TARGET_PLATFORM (CloudFoundry or Containers) and pull in specific implementations
 
+TARGET_PLATFORM_SOURCED=0
 if [[ -z "${TARGET_PLATFORM}" ]]; then
-  if [[ -z "${DEPLOY_TYPE}" ]]; then
-    logWarning "Target platform not specified; defaulting to 'CloudFoundry'"
+  if cf apps | grep -q "^${NAME}"; then
     export TARGET_PLATFORM='CloudFoundry'
   else
-    if [[ "${DEPLOY_TYPE}" == "simple" ]]; then
-      logInfo "Found container deploy type ${DEPLOY_TYPE}. Defaulting target platform to 'Container'"
-      export TARGET_PLATFORM='Container'
-    else
-      logError "Invalid container deploy type '${DEPLOY_TYPE}' detected. Use 'simple' instead"
+    export TARGET_PLATFORM='Container'
+    source "${SCRIPTDIR}/${TARGET_PLATFORM}.sh"
+    TARGET_PLATFORM_SOURCED=1
+    pushd  ${SCRIPTDIR} &>/dev/null
+    ctrGroups=($(groupList))
+    popd &>/dev/null
+    if [[ ! " ${ctrGroups[@]} " =~ " ${NAME} " ]]; then
+      logError "${NAME} is no CloudFoundry application nor a Container group"
       exit 1
     fi
   fi
@@ -57,26 +69,8 @@ else
     exit 1
   fi
 fi
-
-source "${SCRIPTDIR}/${TARGET_PLATFORM}.sh"
-
-# Identify NAME if not set from other likely variables
-if [[ -z "${NAME}" ]] && [[ -n "${CF_APP_NAME}" ]]; then
-  export NAME="${CF_APP_NAME}"
-fi
-
-if [[ -z "${NAME}" ]] && [[ -n "${CONTAINER_NAME}" ]]; then
-  export NAME="${CONTAINER_NAME}"
-fi
-
-if [[ -z "${NAME}" ]]; then
-  logError "Environment variable NAME must be set to the name of the successor application or container group"
-  exit 1
-fi
-if [[ "${NAME}" == "${UNDEFINED}" ]]; then
-  logError "Environment variable NAME must be defined in the environment properties"
-  exit 1
-fi
+logDebug "Using target platform ${TARGET_PLATFORM}"
+(( ! ${TARGET_PLATFORM_SOURCED} )) && source "${SCRIPTDIR}/${TARGET_PLATFORM}.sh"
 
 # Verify that AD_ENDPOINT is available (otherwise set MUSTFAIL_ACTIVEDEPLOY)
 # If it is available, further validate that $AD_ENDPOINT supports $CF_TARGET as a backend
