@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #********************************************************************************
-# Copyright 2016 IBM
+#   (c) Copyright 2016 IBM Corp.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 #   distributed under the License is distributed on an "AS IS" BASIS,
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
+#   limitations under the License.
 #********************************************************************************
 
 #set $DEBUG to 1 for set -x output
@@ -34,21 +35,11 @@ logDebug "GROUP_SIZE = $GROUP_SIZE"
 logDebug "RAMPUP_DURATION = $RAMPUP_DURATION"
 logDebug "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
 logDebug "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
-logDebug "DEPLOYMENT_METHOD = ""$DEPLOYMENT_METHOD"
+logDebug "DEPLOYMENT_METHOD = $DEPLOYMENT_METHOD"
 logDebug "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
 logDebug "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 
 # check deployment method parameter and set create parms
-
-declare -A DEPLOYMENT_METHOD_ARG
-DEPLOYMENT_METHOD_ARG=( [Red Black]=rb [Resource Optimized]=rorb )
-if [ ${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]+_} ]; then
-  DEPLOYMENT_METHOD_CREATE_ARG="${DEPLOYMENT_METHOD_ARG[${DEPLOYMENT_METHOD}]}"
-  logDebug "Found deployment method \"${DEPLOYMENT_METHOD}\" - DEPLOYMENT_METHOD_CREATE_ARG: \"${DEPLOYMENT_METHOD_CREATE_ARG}\""
-else
-  logError "Invalid deployment method ${DEPLOYMENT_METHOD} detected"
-  exit 1
-fi
 
 function exit_with_link() {
   local __status="${1}"
@@ -108,6 +99,9 @@ function rollback_and_cleanup() {
 # cd to target so can read ccs.py when needed (for route detection)
 cd ${SCRIPTDIR}
 
+debugme echo "--- cat ${HOME}/.cf/config.json ---"
+debugme cat ${HOME}/.cf/config.json
+
 originals=($(groupList))
 #originals=($(cf apps | cut -d' ' -f1))
 
@@ -129,9 +123,10 @@ if (( 1 < ${#ROUTED[@]} )); then
 fi
 
 if (( 0 < ${#ROUTED[@]} )); then
-  original_grp=${ROUTED[0]}
-  #original_grp=${ROUTED[$(expr ${#ROUTED[@]} - 1)]}
-  original_grp_id=${original_grp#_*}
+  readarray -t srtd < <(for e in "${ROUTED[@]}"; do echo "$e"; done | sort)
+  original_grp=${srtd[0]}
+  original_grp_id=${original_grp#*_}
+  logDebug "Original_grp: $original_grp - Original_grp_id: $original_grp_id"
 fi
 
 # At this point if original_grp is not set, we didn't find any routed apps; ie, is initial deploy
@@ -169,7 +164,7 @@ fi
 successor_grp=${NAME}
 
 logDebug "Original group is ${original_grp} (${original_grp_id})"
-logDebug "Successor group is ${successor_grp}  (${UPDATE_ID})"
+logDebug "Successor group is ${successor_grp} (${UPDATE_ID})"
 
 # Do update if there is an original group
 if [[ -n "${original_grp}" ]]; then

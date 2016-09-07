@@ -1,7 +1,7 @@
-#/bin/bash
+#!/bin/bash
 
 #********************************************************************************
-# Copyright 2016 IBM
+#   (c) Copyright 2016 IBM Corp.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -13,34 +13,47 @@
 #   distributed under the License is distributed on an "AS IS" BASIS,
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
+#   limitations under the License.
 #********************************************************************************
-
 
 # Method that does something only if DEBUG is set
 function debugme() {
   [[ -n ${DEBUG} ]] && "$@" || :
 }
 
-export LOG_LEVEL=${LOG_LEVEL:-2}
+export LOG_LEVEL=${LOG_LEVEL:-3}
 
 function logError() {
-  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 1 ]] && echo -e "${red}ERROR: $@${no_color}"
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 1 ]] && echo -e "${red}--- ERROR: $@${no_color}"
 }
 
 function logWarning() {
-  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 2 ]] && echo -e "${label_color}WARNING: $@${no_color}"
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 2 ]] && echo -e "${label_color}--- WARNING: $@${no_color}"
 }
 
 function logInfo() {
-  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 3 ]] && echo -e "${white}INFO: $@${no_color}"
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 3 ]] && echo -e "${white}--- INFO: $@${no_color}"
 }
 
 function logDebug() {
-  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 4 ]] && echo -e "${cyan}DEBUG: $@${no_color}"
+  [[ -n "$LOG_LEVEL" && "$LOG_LEVEL" -ge 4 ]] && echo -e "${cyan}--- DEBUG: $@${no_color}"
 }
 
 # Default value; should be sert in target platform specific files (CloudFoundry.sh, Container.sh, etc)
 if [[ -z ${MIN_MAX_WAIT} ]]; then MIN_MAX_WAIT=90; fi
+
+# Check if parameter is a valid integer
+function isInteger() {
+  local regex="^[0-9]+$"
+
+  [[ "${1}" =~ $regex ]] && return 0 || return 1
+}
+
+# Check if parameter is a valid time specifier
+function isValidTime() {
+  local regex="^[0-9][smh]+$"
+  [[ "${1}" =~ $regex ]] && return 0 || return 1
+}
 
 # Remove white space from the start of string
 # Usage: trim_start string
@@ -343,7 +356,7 @@ function wait_phase_completion() {
         >&2 logInfo "Phase ${update_phase} is complete"
         return 0
       else
-        >&2 logInfo "Phase ${update_phase} progress is: ${phase_progress}"
+        >&2 logDebug "Phase ${update_phase} progress is: ${phase_progress}"
       fi
     fi # if [[ "in_progress" == "${update_status}" ]]
     # determine the expected time if haven't done so already; update end_time
@@ -403,6 +416,7 @@ function clean() {
   PATTERN=$(echo $NAME | rev | cut -d_ -f2- | rev)
   VERSION=$(echo $NAME | rev | cut -d_ -f1 | rev)
 
+  unset IFS
   candidates=($(groupList))
   logDebug "clean(): Found ${#candidates[@]} versions: ${candidates[@]}"
 
@@ -476,12 +490,12 @@ function getRouted() {
 
   local __routed_apps=()
   for app in "${__apps[@]}"; do
-    # >&2 echo "Considering app: $app"
+    >&2 logDebug "Considering app: $app"
     app_routes=($(getRoutes ${app}))
-    # >&2 echo "Routes for $app are: ${app_routes[@]}"
+    >&2 logDebug "Routes for $app are: ${app_routes[@]}"
     for rt in ${app_routes[@]}; do
       if [[ "${rt}" == "${__route}" ]]; then
-        # >&2 echo "FOUND app: ${app}"
+        >&2 logDebug "FOUND app: ${app}"
         __routed_apps+=(${app})
         break
       fi

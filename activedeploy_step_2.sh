@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #********************************************************************************
-# Copyright 2016 IBM
+#   (c) Copyright 2016 IBM Corp.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 #   distributed under the License is distributed on an "AS IS" BASIS,
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
+#   limitations under the License.
 #********************************************************************************
 
 #set $DEBUG to 1 for set -x output
@@ -27,6 +28,7 @@ logDebug "TARGET_PLATFORM = $TARGET_PLATFORM"
 logDebug "NAME = $NAME"
 logDebug "AD_ENDPOINT = $AD_ENDPOINT"
 logDebug "CONCURRENT_VERSIONS = $CONCURRENT_VERSIONS"
+logDebug "TEST_RESULT_FOR_AD = $TEST_RESULT_FOR_AD"
 
 # cd to target so can read ccs.py when needed (for group deletion)
 cd ${SCRIPTDIR}
