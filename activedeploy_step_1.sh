@@ -166,8 +166,24 @@ successor_grp=${NAME}
 logDebug "Original group is ${original_grp} (${original_grp_id})"
 logDebug "Successor group is ${successor_grp} (${UPDATE_ID})"
 
-# Do update if there is an original group
+# Do update with active deploy if there is an original group
 if [[ -n "${original_grp}" ]]; then
+
+  # check if there is an active deploy instance, if not create it
+  logInfo "check if AD instance exists in cf services, if not create it."
+  # run cf services to see for service=activedeploy
+  cf services | grep "activedeploy" > mp.output
+  foundservice=`cat mp.output`
+  if [[ -z "$foundservice" ]]; then
+    logInfo "No Active Deploy Instance found. Create it."
+    cf create-service activedeploy free activedeploy-for-pipeline
+  else
+    logInfo "Found Active Deploy Instance."
+  fi
+
+  # Note, this only works for Dallas Prod, London Prod and Dallas stage1? Check on London stage
+  #if [[ ${ROUTE_DOMAIN} == "eu-gb.mybluemix.net"]]; then
+
   logInfo "Beginning update with cf active-deploy-create ..."
 
   create_args="${original_grp} ${successor_grp} --manual --quiet --timeout 60s"
