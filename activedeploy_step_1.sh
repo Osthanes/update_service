@@ -41,7 +41,7 @@ logDebug "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 logDebug "AD_INSTANCE_NAME = $AD_INSTANCE_NAME"
 
 # set ROUTE_DOMAINS, needed to create AD instance
-RD_DALLAS="ng.mybluemix.net"
+RD_DALLAS="mybluemix.net"
 RD_STAGE1="stage1.mybluemix.net"
 RD_LONDON="eu-gb.mybluemix.net"
 
@@ -189,7 +189,7 @@ if [[ -n "${original_grp}" ]]; then
        logInfo "ROUTE_DOMAIN is: ${ROUTE_DOMAIN}"
 
        # check if there is an active deploy instance, if not create it
-       logInfo "check if AD instance exists in cf services, if not create it."
+       logInfo "check if AD instance exists with cf services, if not create it."
        # run cf services to see for service=activedeploy
        cf services | grep "activedeploy" > mp.output
        foundservice=`cat mp.output`
