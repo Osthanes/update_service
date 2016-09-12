@@ -42,7 +42,7 @@ logDebug "AD_INSTANCE_NAME = $AD_INSTANCE_NAME"
 
 # set ROUTE_DOMAINS, needed to create AD instance
 RD_DALLAS="ng.mybluemix.net"
-RD_STAGE1="stage1.ng.mybluemix.net"
+RD_STAGE1="stage1.mybluemix.net"
 RD_LONDON="eu-gb.mybluemix.net"
 
 # if AD_INSTANCE_NAME is not set, use as default "activedeploy-for-pipeline"
