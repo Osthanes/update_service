@@ -39,6 +39,11 @@ logDebug "DEPLOYMENT_METHOD = $DEPLOYMENT_METHOD"
 logDebug "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
 logDebug "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 
+# set ROUTE_DOMAINS, needed to create AD instance
+RD_DALLAS = "ng.mybluemix.net"
+RD_STAGE1 = "stage1.ng.mybluemix.net"
+RD_LONDON = "eu-gb.mybluemix.net"
+
 # check deployment method parameter and set create parms
 
 function exit_with_link() {
@@ -170,9 +175,11 @@ logDebug "Successor group is ${successor_grp} (${UPDATE_ID})"
 if [[ -n "${original_grp}" ]]; then
 
   # AD instance creation only on envs: Dallas Prod, Dallas stage and Lond Prod
-  if [[ ${ROUTE_DOMAIN} == "eu-gb.mybluemix.net" ]] ||
-     [[ ${ROUTE_DOMAIN} == "stage1.ng.mybluemix.net" ]] ||
-     [[ ${ROUTE_DOMAIN} == "ng.mybluemix.net" ]] ; then
+  if [[ ${ROUTE_DOMAIN} == ${RD_DALLAS} ]] ||
+     [[ ${ROUTE_DOMAIN} == ${RD_STAGE1} ]] ||
+     [[ ${ROUTE_DOMAIN} == ${RD_LONDON} ]] ; then
+
+       logInfo "ROUTE_DOMAIN is: ${ROUTE_DOMAIN}"
 
        # check if there is an active deploy instance, if not create it
        logInfo "check if AD instance exists in cf services, if not create it."
