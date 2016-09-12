@@ -40,7 +40,7 @@ logDebug "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
 logDebug "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 
 # set ROUTE_DOMAINS, needed to create AD instance
-var RD_DALLAS="ng.mybluemix.net"
+RD_DALLAS="ng.mybluemix.net"
 RD_STAGE1="stage1.ng.mybluemix.net"
 RD_LONDON="eu-gb.mybluemix.net"
 
