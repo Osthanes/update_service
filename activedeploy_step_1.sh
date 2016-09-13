@@ -38,6 +38,18 @@ logDebug "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
 logDebug "DEPLOYMENT_METHOD = $DEPLOYMENT_METHOD"
 logDebug "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
 logDebug "ROUTE_DOMAIN = $ROUTE_DOMAIN"
+logDebug "AD_INSTANCE_NAME = $AD_INSTANCE_NAME"
+
+# set ROUTE_DOMAINS, needed to create AD instance
+RD_DALLAS="mybluemix.net"
+RD_STAGE1="stage1.mybluemix.net"
+RD_LONDON="eu-gb.mybluemix.net"
+
+# if AD_INSTANCE_NAME is not set, use as default "activedeploy-for-pipeline"
+if [[ -z "$AD_INSTANCE_NAME" ]]; then
+   AD_INSTANCE_NAME="activedeploy-for-pipeline"
+   logInfo "AD_INSTANCE_NAME is set to: $AD_INSTANCE_NAME"
+fi
 
 # check deployment method parameter and set create parms
 
@@ -166,8 +178,29 @@ successor_grp=${NAME}
 logDebug "Original group is ${original_grp} (${original_grp_id})"
 logDebug "Successor group is ${successor_grp} (${UPDATE_ID})"
 
-# Do update if there is an original group
+# Do update with active deploy if there is an original group
 if [[ -n "${original_grp}" ]]; then
+
+  # AD instance creation only on envs: Dallas Prod, Dallas stage and Lond Prod
+  if [[ ${ROUTE_DOMAIN} == $RD_DALLAS ]] ||
+     [[ ${ROUTE_DOMAIN} == $RD_STAGE1 ]] ||
+     [[ ${ROUTE_DOMAIN} == $RD_LONDON ]] ; then
+
+       logInfo "ROUTE_DOMAIN is: ${ROUTE_DOMAIN}"
+
+       # check if there is an active deploy instance, if not create it
+       logInfo "check if AD instance exists with cf services, if not create it."
+       # run cf services to see for service=activedeploy
+       cf services | grep "activedeploy" > mp.output
+       foundservice=`cat mp.output`
+       if [[ -z "$foundservice" ]]; then
+         logInfo "No Active Deploy Instance found. Create it."
+         cf create-service activedeploy free ${AD_INSTANCE_NAME}
+       else
+         logInfo "Found Active Deploy Instance."
+       fi
+  fi
+
   logInfo "Beginning update with cf active-deploy-create ..."
 
   create_args="${original_grp} ${successor_grp} --manual --quiet --timeout 60s"

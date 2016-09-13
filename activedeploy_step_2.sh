@@ -116,7 +116,8 @@ else
     logInfo "$(wait_comment $rc)"
   fi
   # rc will be the exit code; we want a failure code if there was a rollback
-  rc=2
+  # not clear why in case of rollback rc=2. Rollback is fine, but job exits with failure?
+  # rc=2
 fi
 
 # Cleanup - delete older updates

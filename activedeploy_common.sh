@@ -219,17 +219,18 @@ function rollback() {
 
   active_deploy rollback ${__update_id} && rc=$? || rc=$?
   if [[ $rc -eq 0 ]]; then
-  	wait_phase_completion ${__update_id} && rc=$? || rc=$?
+    echo "wait phase completion"
+    wait_phase_completion ${__update_id} && rc=$? || rc=$?
 
 	# stop rolled back app
 	properties=($(with_retry active_deploy show ${__update_id} | grep "successor group: "))
-	str1=${properties[@]}
+  str1=${properties[@]}
 	str2=${str1#*": "}
 	app_name=${str2%" app"*}
 	# TODO replace the above 4 lines with these using our get_properties() utility method
 	#IFS=$'\n' properties=($(with_retry active_deploy show ${__update_id} | grep ':'))
 	#app_name=$(get_property 'successor group' ${properties[@]} | sed -e '#s/ app.*$##')
-	out=$(stopGroup ${app_name})
+  out=$(stopGroup ${app_name})
 	>&2 logInfo "${app_name} stopped after rollback"
 
   fi
@@ -308,6 +309,7 @@ function wait_phase_completion() {
       return 0
       ;;
       rolled\ back)
+      logInfo "${update_status} - Rolled back successfully, Active Deploy Complete will exit with failure."
       return 2
       ;;
       failed)
