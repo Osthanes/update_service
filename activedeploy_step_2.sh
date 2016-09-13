@@ -115,9 +115,8 @@ else
   if (( $rc )); then
     logInfo "$(wait_comment $rc)"
   fi
-  # rc will be the exit code; we want a failure code if there was a rollback
-  # not clear why in case of rollback rc=2. Rollback is fine, but job exits with failure?
-  # rc=2
+  # rc will be the exit code; we want a failure code in pipeline if there was an AD rollback
+  rc=2
 fi
 
 # Cleanup - delete older updates
