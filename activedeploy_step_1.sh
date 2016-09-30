@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #********************************************************************************
-# Copyright 2016 IBM
+#   (c) Copyright 2016 IBM Corp.
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 #   distributed under the License is distributed on an "AS IS" BASIS,
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
+#   limitations under the License.
 #********************************************************************************
 
 #set $DEBUG to 1 for set -x output
@@ -22,20 +23,35 @@ fi
 
 SCRIPTDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
-AD_STEP_1=true 
+AD_STEP_1=true
 source ${SCRIPTDIR}/check_and_set_env.sh
 
-echo "TARGET_PLATFORM = $TARGET_PLATFORM"
-echo "NAME = $NAME"
-echo "AD_ENDPOINT = $AD_ENDPOINT"
-echo "CONCURRENT_VERSIONS = $CONCURRENT_VERSIONS"
-echo "PORT = $PORT"
-echo "GROUP_SIZE = $GROUP_SIZE" 
-echo "RAMPUP_DURATION = $RAMPUP_DURATION" 
-echo "RAMPDOWN_DURATION = $RAMPDOWN_DURATION" 
-echo "ROUTE_HOSTNAME = $ROUTE_HOSTNAME" 
-echo "ROUTE_DOMAIN = $ROUTE_DOMAIN"
-echo "TOOLCHAIN_AVAILABLE = $TOOLCHAIN_AVAILABLE"
+logDebug "TARGET_PLATFORM = $TARGET_PLATFORM"
+logDebug "NAME = $NAME"
+logDebug "AD_ENDPOINT = $AD_ENDPOINT"
+logDebug "CONCURRENT_VERSIONS = $CONCURRENT_VERSIONS"
+logDebug "PORT = $PORT"
+logDebug "GROUP_SIZE = $GROUP_SIZE"
+logDebug "RAMPUP_DURATION = $RAMPUP_DURATION"
+logDebug "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
+logDebug "RAMPDOWN_DURATION = $RAMPDOWN_DURATION"
+logDebug "DEPLOYMENT_METHOD = $DEPLOYMENT_METHOD"
+logDebug "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
+logDebug "ROUTE_DOMAIN = $ROUTE_DOMAIN"
+logDebug "AD_INSTANCE_NAME = $AD_INSTANCE_NAME"
+
+# set ROUTE_DOMAINS, needed to create AD instance
+RD_DALLAS="mybluemix.net"
+RD_STAGE1="stage1.mybluemix.net"
+RD_LONDON="eu-gb.mybluemix.net"
+
+# if AD_INSTANCE_NAME is not set, use as default "activedeploy-for-pipeline"
+if [[ -z "$AD_INSTANCE_NAME" ]]; then
+   AD_INSTANCE_NAME="activedeploy-for-pipeline"
+   logInfo "AD_INSTANCE_NAME is set to: $AD_INSTANCE_NAME"
+fi
+
+# check deployment method parameter and set create parms
 
 function exit_with_link() {
   local __status="${1}"
@@ -69,7 +85,7 @@ function delete_update() {
 
   delete ${__update} && delete_rc=$? || delete_rc=$?
   if (( ${delete_rc} )); then
-    echo "WARN: Unable to delete update record ${__update}"
+    logWarning "Unable to delete update record ${__update}"
   fi
 }
 
@@ -79,7 +95,7 @@ function cleanup() {
 
   clean && clean_rc=$? || clean_rc=$?
   if (( ${clean_rc} )); then
-    echo "WARN: Unable to delete old versions"
+    logWarning "Unable to delete old versions"
   fi
   delete_update ${__update}
 }
@@ -91,11 +107,17 @@ function rollback_and_cleanup() {
   rollback ${__update}
   cleanup
 }
+
 # cd to target so can read ccs.py when needed (for route detection)
 cd ${SCRIPTDIR}
 
+debugme echo "--- cat ${HOME}/.cf/config.json ---"
+debugme cat ${HOME}/.cf/config.json
+
 originals=($(groupList))
 #originals=($(cf apps | cut -d' ' -f1))
+
+logDebug "Originals: ${originals[@]}"
 
 successor="${NAME}"
 
@@ -103,76 +125,100 @@ successor="${NAME}"
 export UPDATE_ID=${BUILD_NUMBER}
 
 # Determine which original groups has the desired route --> the current original
-route="${ROUTE_HOSTNAME}.${ROUTE_DOMAIN}" 
+route="${ROUTE_HOSTNAME}.${ROUTE_DOMAIN}"
 ROUTED=($(getRouted "${route}" "${originals[@]}"))
-echo ${#ROUTED[@]} of original groups routed to ${route}: ${ROUTED[@]}
+logDebug ${#ROUTED[@]} of original groups routed to ${route}: ${ROUTED[@]}
 
 # If more than one routed app, select only the oldest
 if (( 1 < ${#ROUTED[@]} )); then
-  echo "WARNING: More than one app routed to ${route}; updating the oldest"
+  logWarning "More than one app routed to ${route}; updating the oldest"
 fi
 
 if (( 0 < ${#ROUTED[@]} )); then
-  original_grp=${ROUTED[0]}
-  #original_grp=${ROUTED[$(expr ${#ROUTED[@]} - 1)]}
-  original_grp_id=${original_grp#_*}
+  readarray -t srtd < <(for e in "${ROUTED[@]}"; do echo "$e"; done | sort)
+  original_grp=${srtd[0]}
+  original_grp_id=${original_grp#*_}
+  logDebug "Original_grp: $original_grp - Original_grp_id: $original_grp_id"
 fi
 
 # At this point if original_grp is not set, we didn't find any routed apps; ie, is initial deploy
 
 # map/scale original deployment if necessary
 if [[ 1 = ${#originals[@]} ]] || [[ -z $original_grp ]]; then
-  echo "INFO: Initial version, scaling"
+  logInfo "Initial version, scaling"
   scaleGroup ${successor} ${GROUP_SIZE} && rc=$? || rc=$?
   if (( ${rc} )); then
-    echo "ERROR: Failed to scale ${successor} to ${GROUP_SIZE} instances"
+    logError "Failed to scale ${successor} to ${GROUP_SIZE} instances"
     exit ${rc}
   fi
-  echo "INFO: Initial version, mapping route"
+  logInfo "Initial version, mapping route"
   mapRoute ${successor} ${ROUTE_DOMAIN} ${ROUTE_HOSTNAME} && rc=$? || rc=$?
   if (( ${rc} )); then
-    echo "ERROR: Failed to map the route ${ROUTE_DOMAIN}.${ROUTE_HOSTNAME} to ${successor}"
+    logError "Failed to map the route ${ROUTE_DOMAIN}.${ROUTE_HOSTNAME} to ${successor}"
     exit ${rc}
   fi
   exit 0
 else
-  echo "INFO: Not initial version"
+  logInfo "Not initial version"
 fi
 
 # If a problem was found with $AD_ENDPOINT, fail now
 if [[ -n ${MUSTFAIL_ACTIVEDEPLOY} ]]; then
-  echo -e "${red}Active deploy service unavailable; failing.${no_color}"
+  logError "Active deploy service unavailable; failing."
   # Cleanup - delete older updates
   clean && clean_rc=$? || clean_rc=$?
   if (( $clean_rc )); then
-    echo "WARN: Unable to delete old versions."
+    logWarning "Unable to delete old versions."
   fi
   exit 128
 fi
 
 successor_grp=${NAME}
 
-echo "INFO: Original group is ${original_grp} (${original_grp_id})"
-echo "INFO: Successor group is ${successor_grp}  (${UPDATE_ID})"
+logDebug "Original group is ${original_grp} (${original_grp_id})"
+logDebug "Successor group is ${successor_grp} (${UPDATE_ID})"
 
-# Do update if there is an original group
+# Do update with active deploy if there is an original group
 if [[ -n "${original_grp}" ]]; then
-  echo "Beginning update with cf active-deploy-create ..."
- 
+
+  # AD instance creation only on envs: Dallas Prod, Dallas stage and Lond Prod
+  if [[ ${ROUTE_DOMAIN} == $RD_DALLAS ]] ||
+     [[ ${ROUTE_DOMAIN} == $RD_STAGE1 ]] ||
+     [[ ${ROUTE_DOMAIN} == $RD_LONDON ]] ; then
+
+       logInfo "ROUTE_DOMAIN is: ${ROUTE_DOMAIN}"
+
+       # check if there is an active deploy instance, if not create it
+       logInfo "check if AD instance exists with cf services, if not create it."
+       # run cf services to see for service=activedeploy
+       cf services | grep "activedeploy" > mp.output
+       foundservice=`cat mp.output`
+       if [[ -z "$foundservice" ]]; then
+         logInfo "No Active Deploy Instance found. Create it."
+         cf create-service activedeploy free ${AD_INSTANCE_NAME}
+       else
+         logInfo "Found Active Deploy Instance."
+       fi
+  fi
+
+  logInfo "Beginning update with cf active-deploy-create ..."
+
   create_args="${original_grp} ${successor_grp} --manual --quiet --timeout 60s"
-  
+
   if [[ -n "${RAMPUP_DURATION}" ]]; then create_args="${create_args} --rampup ${RAMPUP_DURATION}"; fi
   if [[ -n "${RAMPDOWN_DURATION}" ]]; then create_args="${create_args} --rampdown ${RAMPDOWN_DURATION}"; fi
   create_args="${create_args} --test 1s";
-  
+
+  create_args="${create_args} --algorithm ${DEPLOYMENT_METHOD_CREATE_ARG}"
+
   active=$(find_active_update ${original_grp})
   if [[ -n ${active} ]]; then
-    echo "Original group ${original_grp} already engaged in an active update; rolling it back"
+    logWarning "Original group ${original_grp} already engaged in an active update; rolling it back"
     rollback ${active}
     # Check if it worked
     active=$(find_active_update ${original_grp})
     if [[ -n ${active} ]]; then
-      echo -e "${red}ERROR: Original group ${original_grp} still engaged in an active update; rollback did not work. Exiting.${no_color}"
+      logError "Original group ${original_grp} still engaged in an active update; rollback did not work. Exiting."
       with_retry active_deploy show ${active}
       exit 1
     fi
@@ -183,12 +229,12 @@ if [[ -n "${original_grp}" ]]; then
 
   # Unable to create update
   if (( ${create_rc} )); then
-    echo -e "${red}ERROR: failed to create update; ${update}${no_color}"
+    logError "Failed to create update; ${update}${no_color}"
     with_retry active_deploy list | grep "[[:space:]]${original_grp}[[:space:]]"
     exit ${create_rc}
   fi
 
-  echo "Initiated update: ${update}"
+  logInfo "Initiated update: ${update}"
   with_retry active_deploy show $update --timeout 60s
 
   # Identify URL for visualization of update. To do this:
@@ -198,50 +244,19 @@ if [[ -n "${original_grp}" ]]; then
 
   # Identify toolchain if available and send update details to it
   export PY_UPDATE_ID=$update
-  if (( ${TOOLCHAIN_AVAILABLE} )); then
-    echo "PIPELINE_TOOLCHAIN_ID=${PIPELINE_TOOLCHAIN_ID}"
-    export TC_API_RES="$(curl -s -k -H "Authorization: ${TOOLCHAIN_TOKEN}" https://otc-api.stage1.ng.bluemix.net/api/v1/toolchains/${PIPELINE_TOOLCHAIN_ID}\?include\=everything)"
-   #echo "***** TC_API_RES:"
-   #echo ${TC_API_RES}
 
-    echo ${TC_API_RES} | grep "invalid"
-    if [ $? -eq 0 ]; then
-      #error, invalid API token
-      echo "WARNING: Invalid toolchain token."
-      # Invalid toolchain token is not a reason to fail
-    else
-      #proceed normally
-      export SERVICE_ID="$(python processJSON.py sid)"
-      export AD_API_URL="$(python processJSON.py ad-url)"
-      export PIPELINE_NAME="$(python processJSON.py $PIPELINE_ID)"
-      
-      # echo "SERVICE_ID=${SERVICE_ID}"
-      # echo "AD_API_URL=${AD_API_URL}"
-      # echo "PIPELINE_NAME=${PIPELINE_NAME}"
-
-      curl -s -X PUT --data "{\"organization_guid\": \"$CF_ORGANIZATION_ID\", \"ui_url\": \"$update_url\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/v1/service_instances/$SERVICE_ID" > curlRes.json
-      curl -s -X PUT --data "{\"update_id\": \"$PY_UPDATE_ID\", \"stage_name\": \"$IDS_STAGE_NAME\", \"space_id\": \"$CF_SPACE_ID\", \"ui_url\": \"$update_url\", \"pipeline_id\": \"$PIPELINE_ID\", \"pipeline_name\": \"$PIPELINE_NAME\", \"stage_id\": \"$PIPELINE_STAGE_ID\", \"job_id\": \"$IDS_JOB_ID\", \"ad_status\": \"\"}" -H "Authorization: ${TOOLCHAIN_TOKEN}" -H "Content-Type: application/json" "$AD_API_URL/register_deploy/$SERVICE_ID"
-      if (( $? )); then
-        echo "WARNING: Failed to record the update"
-        # Inability to record an update is not a reason to fail
-      fi
-    fi
-  else
-    echo "INFO: Running in V1 environment, no broker available."
-  fi
-  
   # Wait for completion of rampup phase
   wait_phase_completion $update && rc=$? || rc=$?
-  echo "wait result is $rc"
+  logInfo "Wait result is $rc"
   case "$rc" in
     0) # phase done
     # continue (advance to test)
-    echo "Phase done, advance to test"
+    logInfo "Phase done, advance to test"
     advance $update && advance_rc=$? || advance_rc=$?
     if (( ${advance_rc} )); then
       case "${advance_rc}" in
         0) # phase done
-        echo "INFO: test phase complete"
+        logInfo "Test phase complete"
         ;;
         1) # completed
         delete_update ${update}
@@ -277,18 +292,18 @@ if [[ -n "${original_grp}" ]]; then
     ;;
 
     1) # completed
-    # cannot rollback; delete; return OK 
-    echo "Cannot rollback, phase completed. Deleting update record"
+    # cannot rollback; delete; return OK
+    logError "Cannot rollback, phase completed. Deleting update record"
     delete_udpate $update
     ;;
 
     2) # rolled back
     # delete; return ERROR
-    
+
     # stop rolled back app
     out=$(stopGroup ${successor_grp})
-    echo "${successor_grp} stopped after rollback"
-    
+    logInfo "${successor_grp} stopped after rollback"
+
     cleanup ${update}
 
     rollback_reason=$(get_detailed_message $ad_server_url $update)
@@ -300,7 +315,7 @@ if [[ -n "${original_grp}" ]]; then
     3) # failed
     # FAIL; don't delete; return ERROR -- manual intervension may be needed
     exit_with_link 3 "Phase failed, manual intervension may be needed"
-    ;; 
+    ;;
 
     4) # paused; resume failed
     # FAIL; don't delete; return ERROR -- manual intervension may be needed
@@ -323,7 +338,7 @@ if [[ -n "${original_grp}" ]]; then
     exit_with_link 1 "ERROR: Unknown problem occurred"
     ;;
   esac
-  
+
   # Normal exist; show current update
   with_retry active_deploy show $update
   exit_with_link 0 "${successor_grp} successfully advanced to test phase"
