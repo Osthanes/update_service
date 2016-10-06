@@ -56,7 +56,7 @@ if [[ -z "${TARGET_PLATFORM}" ]]; then
     ctrGroups=($(groupList))
     popd &>/dev/null
     if [[ ! " ${ctrGroups[@]} " =~ " ${NAME} " ]]; then
-      logError "${NAME} is no CloudFoundry application nor a Container group"
+      logError "Neither CloudFoundry application nor Container group ${NAME} found in current org and space"
       exit 1
     fi
   fi
