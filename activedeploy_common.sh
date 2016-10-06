@@ -51,7 +51,7 @@ function isInteger() {
 
 # Check if parameter is a valid time specifier
 function isValidTime() {
-  local regex="^[0-9][smh]+$"
+  local regex="^[0-9]+[smh]$"
   [[ "${1}" =~ $regex ]] && return 0 || return 1
 }
 
