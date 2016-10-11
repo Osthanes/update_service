@@ -17,6 +17,7 @@
 #********************************************************************************
 
 MIN_MAX_WAIT=300
+BMX_URL_SUFFIX="${CF_TARGET_URL#*.}"
 CCS_BASE_URL="https://containers-api.${BMX_URL_SUFFIX}/v3/containers"
 
 # Return list of names of existing versions
