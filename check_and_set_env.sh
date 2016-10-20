@@ -214,8 +214,10 @@ ad_server_url=$(active_deploy service-info | grep "service endpoint: " | sed 's/
 update_gui_url=$(curl -s ${ad_server_url}/v1/info/ | grep update_gui_url | awk '{print $2}' | sed 's/"//g' | sed 's/,//')
 
 # get Active Deploy service GUID
-# cf service activedeploy-for-pipeline --guid
-ad_service_guid="377943f0-e900-405b-a192-a16dd3012eda"
+ad_service_guid="cf service activedeploy-for-pipeline --guid"
+test=`cf services | grep "activedeploy" | awk '/service_name/ {print $2}'`
+logInfo "xxx test is: ${test}"
+# ad_service_guid="377943f0-e900-405b-a192-a16dd3012eda"
 
 # determine and set target_url
 logInfo "ROUTE_DOMAIN is: ${ROUTE_DOMAIN}"

@@ -40,12 +40,6 @@ logDebug "ROUTE_HOSTNAME = $ROUTE_HOSTNAME"
 logDebug "ROUTE_DOMAIN = $ROUTE_DOMAIN"
 logDebug "AD_INSTANCE_NAME = $AD_INSTANCE_NAME"
 
-logInfo "xxxx ROUTE_HOSTNAME is: $ROUTE_HOSTNAME"
-logInfo "xxxx ROUTE_DOMAIN is: $ROUTE_DOMAIN"
-logInfo "xxxx AD_ENDPOINT is: $AD_ENDPOINT"
-logInfo "xxxx TARGET_PLATFORM is: $TARGET_PLATFORM"
-
-
 # set ROUTE_DOMAINS, needed to create AD instance
 RD_DALLAS="mybluemix.net"
 RD_STAGE1="stage1.mybluemix.net"
