@@ -212,5 +212,11 @@ function show_link() {
 #   (c) Construct URL
 ad_server_url=$(active_deploy service-info | grep "service endpoint: " | sed 's/service endpoint: //')
 update_gui_url=$(curl -s ${ad_server_url}/v1/info/ | grep update_gui_url | awk '{print $2}' | sed 's/"//g' | sed 's/,//')
+# get service GUI
+# service_guid = cf service activedeploy-for-pipeline --guid
+service_guid = 377943f0-e900-405b-a192-a16dd3012eda
 
-show_link "Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
+# show_link "Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
+full_GUI_URL=${Target}/services/${service_guid}?ace_config={%22orgGuid%22:%22${CF_ORG_ID}%22%2C%22spaceGuid%22:%22${CF_SPACE_ID}%22}
+show_link "Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
+# https://new-console.ng.bluemix.net/services/377943f0-e900-405b-a192-a16dd3012eda?ace_config={%22orgGuid%22%3A%220c38250d-2720-451a-a087-7133879344ea%22 %2C  %22spaceGuid%22%3A%22a63fc67f-dd65-40b8-b9e2-079202a24341%22%2C%22redirect%22%3A%22https%3A%2F%2Fnew-console.ng.bluemix.net%2F%23all-items%22%2C%22bluemixUIVersion%22%3A%22Atlas%22}
