@@ -228,13 +228,13 @@ fi
 
 # determine and set target_url for AD full GUI
 case "${update_gui_url}" in
-  activedeploy.ng.mybluemix.net) # DALLAS Prod
+  https://activedeploy.ng.bluemix.net) # DALLAS Prod
   target_url="https://new-console.ng.bluemix.net"
   ;;
-  activedeploy.stage1.ng.mybluemix.net) # STAGE1
+  https://activedeploy.stage1.ng.mybluemix.net) # STAGE1
   target_url="https://dev-console.stage1.ng.mybluemix.net"
   ;;
-  activedeploy.eu-gb.mybluemix.net) # LONDON Prod
+  https://activedeploy.eu-gb.mybluemix.net) # LONDON Prod
   target_url="https://new-console.eu-gb.bluemix.net"
   ;;
   *) # In case of AD full UI not available
