@@ -63,7 +63,7 @@ function exit_with_link() {
 
  if [[ ${ad_service_guid} && ${target_url} ]]; then
       # show full AD GUI, as GUI is supported and AD Instance exists
-      full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
+      full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
       show_link "Deployment URL" ${full_GUI_URL} ${green}
   else
       show_link "Deployment URL" ${update_url} ${__color}
@@ -247,7 +247,7 @@ if [[ -n "${original_grp}" ]]; then
   # The active deploy api server and GUI server were computed in check
   if [[ ${ad_service_guid} && ${target_url} ]]; then
     # show full AD GUI, as GUI is supported and AD Instance exists
-    full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
+    full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
     show_link "Deployment URL" ${full_GUI_URL} ${green}
   else
     # no full AD GUI and no AD Instance available, show snippet GUI

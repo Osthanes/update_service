@@ -239,7 +239,7 @@ case "${ROUTE_DOMAIN}" in
   ;;
   *) # In case of AD full UI not available, IN WHAT CASE? TODO to verify !!
   logInfo "Full AD GUI URL could not be determined, use AD GUI snippet"
-  show_link "Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
+  show_link "check script: Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
   ;;
 esac
 
@@ -247,6 +247,6 @@ logInfo "target url is: ${target_url}"
 
 # show full GUI URL, only if target_url and ad service guid exist
 if [[ ${ad_service_guid} && ${target_url} ]]; then
-  full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
-  show_link "Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
+  full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
+  show_link "check script: Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
 fi
