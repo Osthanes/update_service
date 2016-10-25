@@ -63,10 +63,12 @@ fi
 # The active deploy api server and GUI server were computed in check
 logInfo "xxx Rampdown phase: AD service name is: ${ad_service}"
 logInfo "xxx Rampdown phase: AD service GUID is: ${ad_service_guid}"
+logInfo "xxx Rampdown phase: update gui url is: ${update_gui_url}"
+logInfo "xxx Rampdown phase: target url is: ${target_url}"
 
 if [[ ${ad_service_guid} && ${target_url} ]]; then
     # show full AD GUI, as GUI is supported and AD Instance exists
-    full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
+    full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
     show_link "Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
 else
     show_link "Deployment URL" \

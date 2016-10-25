@@ -213,6 +213,8 @@ function show_link() {
 ad_server_url=$(active_deploy service-info | grep "service endpoint: " | sed 's/service endpoint: //')
 update_gui_url=$(curl -s ${ad_server_url}/v1/info/ | grep update_gui_url | awk '{print $2}' | sed 's/"//g' | sed 's/,//')
 
+logInfo "xxx update gui url is: ${update_gui_url}"
+
 # get Active Deploy service GUID
 ad_service=`cf services | grep "activedeploy" | awk '{print $1}'`
 logInfo "xxx AD service name is: ${ad_service}"
@@ -225,19 +227,17 @@ fi
 # ad_service_guid="377943f0-e900-405b-a192-a16dd3012eda"
 
 # determine and set target_url for AD full GUI
-# TODO: get target_url from pipeline info
-logInfo "ROUTE_DOMAIN is: ${ROUTE_DOMAIN}"
-case "${ROUTE_DOMAIN}" in
-  mybluemix.net) # DALLAS Prod
+case "${update_gui_url}" in
+  activedeploy.ng.mybluemix.net) # DALLAS Prod
   target_url="https://new-console.ng.bluemix.net"
   ;;
-  stage1.ng.mybluemix.net) # STAGE1
+  activedeploy.stage1.ng.mybluemix.net) # STAGE1
   target_url="https://dev-console.stage1.ng.mybluemix.net"
   ;;
-  eu-gb.mybluemix.net) # LONDON Prod
+  activedeploy.eu-gb.mybluemix.net) # LONDON Prod
   target_url="https://new-console.eu-gb.bluemix.net"
   ;;
-  *) # In case of AD full UI not available, IN WHAT CASE? TODO to verify !!
+  *) # In case of AD full UI not available
   logInfo "Full AD GUI URL could not be determined, use AD GUI snippet"
   show_link "check script: Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
   ;;
