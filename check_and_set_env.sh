@@ -216,7 +216,7 @@ update_gui_url=$(curl -s ${ad_server_url}/v1/info/ | grep update_gui_url | awk '
 # get Active Deploy service GUID
 ad_service=`cf services | grep "activedeploy" | awk '{print $1}'`
 logInfo "xxx AD service name is: ${ad_service}"
-if [[ ! -z ${ad_service} ]]; then
+if [[ ${ad_service} ]]; then
    logInfo "AD service Instance exists. AD service name is: ${ad_service}"
    ad_service_guid=`cf service ${ad_service} --guid`
    logInfo "AD service GUID is: ${ad_service_guid}"
@@ -246,7 +246,7 @@ esac
 logInfo "target url is: ${target_url}"
 
 # show full GUI URL, only if target_url and ad service guid exist
-if [ [ ! -z ${ad_service_guid} ] && [ ! -z ${target_url} ] ]; then
+if [[ ${ad_service_guid} && ${target_url} ]]; then
   full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
   show_link "Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
 fi
