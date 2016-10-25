@@ -65,6 +65,7 @@ logInfo "xxx Rampdown phase: AD service name is: ${ad_service}"
 logInfo "xxx Rampdown phase: AD service GUID is: ${ad_service_guid}"
 logInfo "xxx Rampdown phase: update gui url is: ${update_gui_url}"
 logInfo "xxx Rampdown phase: target url is: ${target_url}"
+logInfo "xxx Rampdown phase: AD endpoint is: ${AD_ENDPOINT}"
 
 if [[ ${ad_service_guid} && ${target_url} ]]; then
     # show full AD GUI, as GUI is supported and AD Instance exists

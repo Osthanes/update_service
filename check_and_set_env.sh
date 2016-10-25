@@ -231,10 +231,10 @@ case "${update_gui_url}" in
   https://activedeploy.ng.bluemix.net) # DALLAS Prod
   target_url="https://new-console.ng.bluemix.net"
   ;;
-  https://activedeploy.stage1.ng.mybluemix.net) # STAGE1
+  https://activedeploy.stage1.ng.bluemix.net) # STAGE1
   target_url="https://dev-console.stage1.ng.mybluemix.net"
   ;;
-  https://activedeploy.eu-gb.mybluemix.net) # LONDON Prod
+  https://activedeploy.eu-gb.bluemix.net) # LONDON Prod
   target_url="https://new-console.eu-gb.bluemix.net"
   ;;
   *) # In case of AD full UI not available
