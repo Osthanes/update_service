@@ -60,13 +60,22 @@ if [[ -z "${update_id}" ]]; then
 fi
 
 # Identify URL for visualization of update. To do this:
-# The active deploy api server and GUI server were computed in check
+# The target_url is computed in check
 logInfo "xxx Rampdown phase: AD service name is: ${ad_service}"
 logInfo "xxx Rampdown phase: AD service GUID is: ${ad_service_guid}"
 logInfo "xxx Rampdown phase: update gui url is: ${update_gui_url}"
 logInfo "xxx Rampdown phase: target url is: ${target_url}"
-logInfo "xxx Rampdown phase: AD endpoint is: ${AD_ENDPOINT}"
 
+# get Active Deploy service GUID for AD GUI URL
+ad_service=`cf services | grep "activedeploy" | awk '{print $1}'`
+logInfo "xxx AD service name is: ${ad_service}"
+if [[ ${ad_service} ]]; then
+   logInfo "AD service Instance exists. AD service name is: ${ad_service}"
+   ad_service_guid=`cf service ${ad_service} --guid`
+   logInfo "AD service GUID is: ${ad_service_guid}"
+fi
+
+# show AD GUI
 if [[ ${ad_service_guid} && ${target_url} ]]; then
     # show full AD GUI, as GUI is supported and AD Instance exists
     full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
