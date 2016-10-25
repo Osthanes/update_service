@@ -244,7 +244,18 @@ if [[ -n "${original_grp}" ]]; then
   with_retry active_deploy show $update --timeout 60s
 
   # Identify URL for visualization of update. To do this:
-  # The active deploy api server and GUI server were computed in check
+  # The target_url is computed in check
+
+  # get Active Deploy service GUID for AD GUI URL
+  ad_service=`cf services | grep "activedeploy" | awk '{print $1}'`
+  logInfo "xxx AD service name is: ${ad_service}"
+  if [[ ${ad_service} ]]; then
+     logInfo "AD service Instance exists. AD service name is: ${ad_service}"
+     ad_service_guid=`cf service ${ad_service} --guid`
+     logInfo "AD service GUID is: ${ad_service_guid}"
+  fi
+
+  # show AD GUI
   if [[ ${ad_service_guid} && ${target_url} ]]; then
     # show full AD GUI, as GUI is supported and AD Instance exists
     full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"

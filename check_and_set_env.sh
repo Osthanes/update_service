@@ -215,17 +215,6 @@ update_gui_url=$(curl -s ${ad_server_url}/v1/info/ | grep update_gui_url | awk '
 
 logInfo "xxx update gui url is: ${update_gui_url}"
 
-# get Active Deploy service GUID
-ad_service=`cf services | grep "activedeploy" | awk '{print $1}'`
-logInfo "xxx AD service name is: ${ad_service}"
-if [[ ${ad_service} ]]; then
-   logInfo "AD service Instance exists. AD service name is: ${ad_service}"
-   ad_service_guid=`cf service ${ad_service} --guid`
-   logInfo "AD service GUID is: ${ad_service_guid}"
-fi
-
-# ad_service_guid="377943f0-e900-405b-a192-a16dd3012eda"
-
 # determine and set target_url for AD full GUI
 case "${update_gui_url}" in
   https://activedeploy.ng.bluemix.net) # DALLAS Prod
@@ -244,9 +233,3 @@ case "${update_gui_url}" in
 esac
 
 logInfo "target url is: ${target_url}"
-
-# show full GUI URL, only if target_url and ad service guid exist
-if [[ ${ad_service_guid} && ${target_url} ]]; then
-  full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
-  show_link "check script: Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
-fi
