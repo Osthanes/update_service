@@ -245,14 +245,14 @@ if [[ -n "${original_grp}" ]]; then
 
   # Identify URL for visualization of update. To do this:
   # The target_url is computed in check
-
   # get Active Deploy service GUID for AD GUI URL
   ad_service=`cf services | grep "activedeploy" | awk '{print $1}'`
-  logInfo "xxx AD service name is: ${ad_service}"
   if [[ ${ad_service} ]]; then
      logInfo "AD service Instance exists. AD service name is: ${ad_service}"
      ad_service_guid=`cf service ${ad_service} --guid`
      logInfo "AD service GUID is: ${ad_service_guid}"
+  else
+    logInfo "Active Deploy service does not exist."
   fi
 
   # show AD GUI
