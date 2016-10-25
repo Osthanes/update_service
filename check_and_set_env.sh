@@ -213,4 +213,21 @@ function show_link() {
 ad_server_url=$(active_deploy service-info | grep "service endpoint: " | sed 's/service endpoint: //')
 update_gui_url=$(curl -s ${ad_server_url}/v1/info/ | grep update_gui_url | awk '{print $2}' | sed 's/"//g' | sed 's/,//')
 
-show_link "Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
+logInfo "Update gui url is: ${update_gui_url}"
+
+# determine and set target_url for AD full GUI
+case "${update_gui_url}" in
+  https://activedeploy.ng.bluemix.net) # DALLAS Prod
+  target_url="https://new-console.ng.bluemix.net"
+  ;;
+  https://activedeploy.stage1.ng.bluemix.net) # STAGE1
+  target_url="https://dev-console.stage1.ng.mybluemix.net"
+  ;;
+  https://activedeploy.eu-gb.bluemix.net) # LONDON Prod
+  target_url="https://new-console.eu-gb.bluemix.net"
+  ;;
+  *) # In case of AD full UI not available
+  logInfo "Full AD GUI URL could not be determined, use AD GUI snippet"
+  show_link "check script: Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
+  ;;
+esac

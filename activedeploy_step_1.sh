@@ -42,13 +42,12 @@ logDebug "AD_INSTANCE_NAME = $AD_INSTANCE_NAME"
 
 # set ROUTE_DOMAINS, needed to create AD instance
 RD_DALLAS="mybluemix.net"
-RD_STAGE1="stage1.mybluemix.net"
+RD_STAGE1="stage1.ng.mybluemix.net"
 RD_LONDON="eu-gb.mybluemix.net"
 
 # if AD_INSTANCE_NAME is not set, use as default "activedeploy-for-pipeline"
 if [[ -z "$AD_INSTANCE_NAME" ]]; then
    AD_INSTANCE_NAME="activedeploy-for-pipeline"
-   logInfo "AD_INSTANCE_NAME is set to: $AD_INSTANCE_NAME"
 fi
 
 # check deployment method parameter and set create parms
@@ -61,7 +60,14 @@ function exit_with_link() {
   if (( ${__status} )); then __color="${red}"; fi
 
   echo -e "${__color}${__message}${no_color}"
-  show_link "Deployment URL" ${update_url} ${__color}
+
+ if [[ ${ad_service_guid} && ${target_url} ]]; then
+      # show full AD GUI, as GUI is supported and AD Instance exists
+      full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
+      show_link "Deployment URL" ${full_GUI_URL} ${green}
+  else
+      show_link "Deployment URL" ${update_url} ${__color}
+  fi
 
   exit ${__status}
 }
@@ -197,7 +203,7 @@ if [[ -n "${original_grp}" ]]; then
          logInfo "No Active Deploy Instance found. Create it."
          cf create-service activedeploy free ${AD_INSTANCE_NAME}
        else
-         logInfo "Found Active Deploy Instance."
+         logInfo "Found Active Deploy Instance: $AD_INSTANCE_NAME"
        fi
   fi
 
@@ -238,9 +244,27 @@ if [[ -n "${original_grp}" ]]; then
   with_retry active_deploy show $update --timeout 60s
 
   # Identify URL for visualization of update. To do this:
-  # The active deploy api server and GUI server were computed in check
-  update_url="${update_gui_url}/deployments/${update}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
-  show_link "Deployment URL" "${update_url}" ${green}
+  # The target_url is computed in check
+  # get Active Deploy service GUID for AD GUI URL
+  ad_service=`cf services | grep "activedeploy" | awk '{print $1}'`
+  if [[ ${ad_service} ]]; then
+     logInfo "AD service Instance exists. AD service name is: ${ad_service}"
+     ad_service_guid=`cf service ${ad_service} --guid`
+     logInfo "AD service GUID is: ${ad_service_guid}"
+  else
+    logInfo "Active Deploy service does not exist."
+  fi
+
+  # show AD GUI
+  if [[ ${ad_service_guid} && ${target_url} ]]; then
+    # show full AD GUI, as GUI is supported and AD Instance exists
+    full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
+    show_link "Deployment URL" ${full_GUI_URL} ${green}
+  else
+    # no full AD GUI and no AD Instance available, show snippet GUI
+    update_url="${update_gui_url}/deployments/${update}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
+    show_link "Deployment URL" "${update_url}" ${green}
+  fi
 
   # Identify toolchain if available and send update details to it
   export PY_UPDATE_ID=$update
