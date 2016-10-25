@@ -65,9 +65,8 @@ function exit_with_link() {
       # show full AD GUI, as GUI is supported and AD Instance exists
       full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
       show_link "Deployment URL" ${full_GUI_URL} ${green}
-      else
-        show_link "Deployment URL" ${update_url} ${__color}
-      fi
+  else
+      show_link "Deployment URL" ${update_url} ${__color}
   fi
 
   exit ${__status}
@@ -250,14 +249,12 @@ if [[ -n "${original_grp}" ]]; then
     # show full AD GUI, as GUI is supported and AD Instance exists
     full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
     show_link "Deployment URL" ${full_GUI_URL} ${green}
-    else
-      # no full AD GUI and no AD Instance available, show snippet GUI
-      update_url="${update_gui_url}/deployments/${update}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
-      show_link "Deployment URL" "${update_url}" ${green}
-    fi
+  else
+    # no full AD GUI and no AD Instance available, show snippet GUI
+    update_url="${update_gui_url}/deployments/${update}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
+    show_link "Deployment URL" "${update_url}" ${green}
   fi
-
-
+  
   # Identify toolchain if available and send update details to it
   export PY_UPDATE_ID=$update
 
