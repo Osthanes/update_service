@@ -61,9 +61,16 @@ fi
 
 # Identify URL for visualization of update. To do this:
 # The active deploy api server and GUI server were computed in check
-show_link "Deployment URL" \
+if [[ -z ${ad_service_guid} && -z ${target_url} ]]; then
+    # show full AD GUI, as GUI is supported and AD Instance exists
+    full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
+    show_link "Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
+    else
+      show_link "Deployment URL" \
           "${update_gui_url}/deployments/${update_id}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" \
           ${green}
+    fi
+fi
 
 logInfo "Not initial version (part of update ${update_id})"
 with_retry active_deploy show ${update_id}

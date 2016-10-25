@@ -48,7 +48,6 @@ RD_LONDON="eu-gb.mybluemix.net"
 # if AD_INSTANCE_NAME is not set, use as default "activedeploy-for-pipeline"
 if [[ -z "$AD_INSTANCE_NAME" ]]; then
    AD_INSTANCE_NAME="activedeploy-for-pipeline"
-   logInfo "AD_INSTANCE_NAME is set to: $AD_INSTANCE_NAME"
 fi
 
 # check deployment method parameter and set create parms
@@ -61,7 +60,15 @@ function exit_with_link() {
   if (( ${__status} )); then __color="${red}"; fi
 
   echo -e "${__color}${__message}${no_color}"
-  show_link "Deployment URL" ${update_url} ${__color}
+
+  if [[ -z ${ad_service_guid} && -z ${target_url} ]]; then
+      # show full AD GUI, as GUI is supported and AD Instance exists
+      full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
+      show_link "Deployment URL" ${full_GUI_URL} ${green}
+      else
+        show_link "Deployment URL" ${update_url} ${__color}
+      fi
+  fi
 
   exit ${__status}
 }
@@ -197,7 +204,7 @@ if [[ -n "${original_grp}" ]]; then
          logInfo "No Active Deploy Instance found. Create it."
          cf create-service activedeploy free ${AD_INSTANCE_NAME}
        else
-         logInfo "Found Active Deploy Instance."
+         logInfo "Found Active Deploy Instance: $AD_INSTANCE_NAME"
        fi
   fi
 
@@ -239,8 +246,17 @@ if [[ -n "${original_grp}" ]]; then
 
   # Identify URL for visualization of update. To do this:
   # The active deploy api server and GUI server were computed in check
-  update_url="${update_gui_url}/deployments/${update}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
-  show_link "Deployment URL" "${update_url}" ${green}
+  if [[ -z ${ad_service_guid} && -z ${target_url} ]]; then
+    # show full AD GUI, as GUI is supported and AD Instance exists
+    full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
+    show_link "Deployment URL" ${full_GUI_URL} ${green}
+    else
+      # no full AD GUI and no AD Instance available, show snippet GUI
+      update_url="${update_gui_url}/deployments/${update}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
+      show_link "Deployment URL" "${update_url}" ${green}
+    fi
+  fi
+
 
   # Identify toolchain if available and send update details to it
   export PY_UPDATE_ID=$update

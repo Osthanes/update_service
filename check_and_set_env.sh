@@ -215,14 +215,18 @@ update_gui_url=$(curl -s ${ad_server_url}/v1/info/ | grep update_gui_url | awk '
 
 # get Active Deploy service GUID
 ad_service=`cf services | grep "activedeploy" | awk '{print $1}'`
-ad_service_guid=`cf service ${ad_service} --guid`
-logInfo "the AD service name is: ${ad_service}"
-logInfo "the AD service GUID is: ${ad_service_guid}"
+if [[ -z ${ad_service} ]]; then
+   logInfo "AD service name is: ${ad_service}"
+   ad_service_guid=`cf service ${ad_service} --guid`
+   if [[ -z ${ad_service_guid} ]]; then
+      logInfo "AD service GUID is: ${ad_service_guid}"
+   fi
+fi
 
 # ad_service_guid="377943f0-e900-405b-a192-a16dd3012eda"
 
 # determine and set target_url for AD full GUI
-# still to add: London stage and Sydney Prod? --> note for both envs there is no Active Deploy Broker deployed
+# TODO: get target_url from pipeline info
 logInfo "ROUTE_DOMAIN is: ${ROUTE_DOMAIN}"
 case "${ROUTE_DOMAIN}" in
   mybluemix.net) # DALLAS Prod
@@ -234,12 +238,14 @@ case "${ROUTE_DOMAIN}" in
   eu-gb.mybluemix.net) # LONDON Prod
   target_url="https://new-console.eu-gb.bluemix.net"
   ;;
-  *)
-  logInfo "Target_url could be determined, use AD GUI snippet"
+  *) # In case of AD full UI not available, IN WHAT CASE? TODO to verify !!
+  logInfo "Full AD GUI URL could not be determined, use AD GUI snippet"
   show_link "Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
   ;;
 esac
 
-# if target_url is not null
-full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
-show_link "Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
+# show full GUI URL, only if target_url and ad service guid exist
+if [[ -z ${ad_service_guid} && -z ${target_url} ]]; then
+  full_GUI_URL=${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}
+  show_link "Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
+fi
