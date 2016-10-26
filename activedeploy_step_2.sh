@@ -78,9 +78,8 @@ if [[ ${ad_service_guid} && ${target_url} ]]; then
     full_GUI_URL="${target_url}/services/${ad_service_guid}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}"
     show_link "Deployments for space ${CF_SPACE_ID}" ${full_GUI_URL} ${green}
 else
-    show_link "Deployment URL" \
-    "${update_gui_url}/deployments/${update_id}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" \
-    ${green}
+    logInfo "No Active Deploy GUI available on this environment."
+    #show_link "Deployment URL" "${update_gui_url}/deployments/${update_id}?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
 fi
 
 logInfo "Not initial version (part of update ${update_id})"
