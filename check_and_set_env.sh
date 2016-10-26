@@ -221,13 +221,13 @@ case "${update_gui_url}" in
   target_url="https://new-console.ng.bluemix.net"
   ;;
   https://activedeploy.stage1.ng.bluemix.net) # STAGE1
-  target_url="https://dev-console.stage1.ng.mybluemix.net"
+  target_url="https://dev-console.stage1.ng.bluemix.net"
   ;;
   https://activedeploy.eu-gb.bluemix.net) # LONDON Prod
   target_url="https://new-console.eu-gb.bluemix.net"
   ;;
   *) # In case of AD full UI not available
-  logInfo "Full AD GUI URL could not be determined, use AD GUI snippet"
-  show_link "check script: Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
+  logInfo "No Active Deploy GUI available on this environment."
+  # show_link "check script: Deployments for space ${CF_SPACE_ID}" "${update_gui_url}/deployments?ace_config={%22spaceGuid%22:%22${CF_SPACE_ID}%22}" ${green}
   ;;
 esac
