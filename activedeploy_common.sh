@@ -422,12 +422,15 @@ function clean() {
 
   VERSIONS=()
   for c in "${candidates[@]}"; do
-    v=$(echo ${c} | rev | cut -d_ -f1 | rev)
-    VERSIONS+=(${v})
+    p=$(rev <<< ${c} | cut -d_ -f2 | rev)
+    if [[ "$p" == "$PATTERN" ]]; then
+      v=$(rev <<< ${c} | cut -d_ -f1 | rev)
+      VERSIONS+=(${v})
+    fi
   done
 
   SORTED_VERSIONS=($(for i in ${VERSIONS[@]}; do echo $i; done | sort -n))
-  logDebug  "clean(): Found sorted ${#SORTED_VERSIONS[@]} versions: ${SORTED_VERSIONS[@]}"
+  logDebug  "clean(): Found sorted ${#SORTED_VERSIONS[@]} versions: ${SORTED_VERSIONS[@]} for pattern $PATTERN"
 
   # Iterate in reverse (most recent to oldest)
   CURRENT_VERSION=
