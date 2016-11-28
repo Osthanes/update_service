@@ -44,6 +44,8 @@ fi
 
 # Identify TARGET_PLATFORM (CloudFoundry or Containers) and pull in specific implementations
 
+PATTERN=$(echo $NAME | rev | cut -d_ -f2- | rev)
+
 TARGET_PLATFORM_SOURCED=0
 if [[ -z "${TARGET_PLATFORM}" ]]; then
   if cf apps | grep -q "^${NAME}"; then
