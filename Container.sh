@@ -33,7 +33,7 @@ baseUrl = os.getenv('__baseUrl')
 pattern = os.getenv('__pattern')
 s = ccs.ContainerCloudService(base_url = baseUrl)
 groups = s.list_groups(timeout=30)
-sys.stderr.write('groupList: {}\n'.format(groups))
+#sys.stderr.write('groupList: {}\n'.format(groups))
 names = [g.get('Name', '') for g in groups]
 result=[]
 for name in names:
