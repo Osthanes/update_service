@@ -422,11 +422,8 @@ function clean() {
 
   VERSIONS=()
   for c in "${candidates[@]}"; do
-    p=$(rev <<< ${c} | cut -d_ -f2 | rev)
-    if [[ "$p" == "$PATTERN" ]]; then
-      v=$(rev <<< ${c} | cut -d_ -f1 | rev)
-      VERSIONS+=(${v})
-    fi
+    v=$(echo ${c} | rev | cut -d_ -f1 | rev)
+    VERSIONS+=(${v})
   done
 
   SORTED_VERSIONS=($(for i in ${VERSIONS[@]}; do echo $i; done | sort -n))

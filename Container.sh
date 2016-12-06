@@ -23,16 +23,24 @@ CCS_BASE_URL="https://containers-api.${BMX_URL_SUFFIX}/v3/containers"
 # Return list of names of existing versions
 # Usage: groupList
 function groupList() {
-__baseUrl="$CCS_BASE_URL" python - <<CODE
+PATTERN=$(echo $NAME | rev | cut -d_ -f2- | rev)
+__baseUrl="$CCS_BASE_URL" __pattern="$PATTERN" python - <<CODE
 import ccs
 import os
 import sys
+import re
 baseUrl = os.getenv('__baseUrl')
+pattern = os.getenv('__pattern')
 s = ccs.ContainerCloudService(base_url = baseUrl)
 groups = s.list_groups(timeout=30)
-sys.stderr.write('groupList: {}\n'.format(groups))
+#sys.stderr.write('groupList: {}\n'.format(groups))
 names = [g.get('Name', '') for g in groups]
-print('{}'.format(' '.join(names)))
+result=[]
+for name in names:
+   m=re.match(r"%s_\d*" % (pattern),name)
+   if m:
+      result.append(name)
+print('{}'.format(' '.join(result)))
 CODE
 }
 

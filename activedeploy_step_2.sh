@@ -52,7 +52,7 @@ fi
 # involving the add / container named "${NAME}"
 in_prog=$(with_retry active_deploy list | grep "${NAME}" | grep "in_progress")
 read -a array <<< "$in_prog"
-update_id=${array[0]}
+update_id=${array[1]}
 if [[ -z "${update_id}" ]]; then
   logInfo "Initial version (no update containing ${NAME}); exiting"
   with_retry active_deploy list
