@@ -489,12 +489,15 @@ function getRouted() {
   >&2 logDebug "Looking for application with route ${__route} among ${__apps[@]}"
 
   local __routed_apps=()
+  local __route_lower=${__route,,}
+  local rt_lower
   for app in "${__apps[@]}"; do
     >&2 logDebug "Considering app: $app"
     app_routes=($(getRoutes ${app}))
     >&2 logDebug "Routes for $app are: ${app_routes[@]}"
     for rt in ${app_routes[@]}; do
-      if [[ "${rt}" == "${__route}" ]]; then
+      rt_lower=${rt,,}
+      if [[ "${rt_lower}" == "${__route_lower}" ]]; then
         >&2 logDebug "FOUND app: ${app}"
         __routed_apps+=(${app})
         break
