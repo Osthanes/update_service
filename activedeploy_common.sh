@@ -89,7 +89,6 @@ function trim () {
 function get_property() {
   __key=$1; shift
   __properties=("$@")
-  local d
 
   for e in "${__properties[@]}"; do
     if [[ $e =~ ${__key}:[[:space:]].* ]]; then
