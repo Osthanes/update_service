@@ -97,6 +97,7 @@ function get_property() {
   for e in "${__properties[@]}"; do
     if [[ $e =~ ${__key}:[[:space:]].* ]]; then
       trim $(echo $e | cut -d: -f2)
+      return
     fi
   done
 }
