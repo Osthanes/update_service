@@ -80,11 +80,7 @@ function trim_end () {
 # Remove whitespace from the start and end of a string
 # Usage trim string
 function trim () {
-  if read -t 0 str; then
-    sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
-  else
     echo -e "$*" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
-  fi
 }
 
 
@@ -97,8 +93,7 @@ function get_property() {
 
   for e in "${__properties[@]}"; do
     if [[ $e =~ ${__key}:[[:space:]].* ]]; then
-      d=$(trim $(echo $e | cut -d: -f2))
-      echo $d
+      trim $(echo $e | cut -d: -f2)
     fi
   done
 }
