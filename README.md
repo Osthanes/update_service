@@ -1,3 +1,6 @@
+# Note
+This service is being deprecated. For more information about the deprecation of this service, see https://www.ibm.com/blogs/bluemix/2017/05/retirement-ibm-active-deploy-beta-service/ 
+
 # update_service
 
 Sample scripts that can be used to do a zero-downtime upgrade of a
