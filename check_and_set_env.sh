@@ -27,6 +27,11 @@ UNDEFINED="undefined"
 # Pull in common methods
 source ${SCRIPTDIR}/activedeploy_common.sh
 
+logWarning '*** Note: This service is being deprecated.'
+logWarning '*** For more information about the deprecation of this service, '
+logWarning '*** see https://www.ibm.com/blogs/bluemix/2017/05/retirement-ibm-active-deploy-beta-service/'
+logWarning '*** Note: This service is being deprecated.'
+
 logDebug "EXT_DIR=$EXT_DIR"
 if [[ -f $EXT_DIR/common/cf ]]; then
   PATH=$EXT_DIR/common:$PATH
